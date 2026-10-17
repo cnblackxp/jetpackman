@@ -59,6 +59,13 @@ renames `nw.exe`, drops non-English locales (`--all-locales` keeps them), copies
 folders of older builds (their zips stay). NW.js version: `package.json` → `nwjs.version`
 (currently 0.117.0); override with `--nw=<ver>` or `NWJS_VERSION`.
 
+## Publishing
+
+- **Browser:** GitHub Pages serves `main` (root) at https://cnblackxp.github.io/jetpackman/; every push
+  to `main` updates it. `vendor/pixi.min.js` is committed so the site needs no CDN.
+- **Desktop release:** push a tag `v*` → `.github/workflows/release.yml` runs `npm test`, `npm run package`
+  and attaches the zip to a GitHub release. Bump `version` in `package.json` to match the tag.
+
 ## Open tasks
 
 See [`TODO.md`](../TODO.md): playtest list for the 20-level campaign and the paused level solver.

@@ -1,0 +1,56 @@
+# Builds the Windows desktop version and attaches it to a GitHub release.
+# Runs when a version tag is pushed:   git tag v1.0.1 && git push origin v1.0.1
+# (or by hand from the Actions tab: "Run workflow", with a tag name).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to create or update (e.g. v1.0.1)'
+        required: true
+
+permissions:
+  contents: write   # create the release and upload the zip
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tests (rules + every level)
+        run: npm test
+
+      - name: Cache the NW.js runtime
+        uses: actions/cache@v4
+        with:
+          path: .cache/nwjs
+          key: nwjs-${{ hashFiles('package.json') }}
+
+      - name: Build the Windows desktop zip
+        run: npm run package
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: Jetpack Man ${{ github.event.inputs.tag || github.ref_name }}
+          files: dist/*.zip
+          body: |
+            **Play in the browser:** https://cnblackxp.github.io/jetpackman/
+
+            **Windows desktop version:** download the zip below, unzip it anywhere and run `JetpackMan.exe`.
+            It opens in a resizable window; Options has Fullscreen and Start in fullscreen (F11 toggles).
+
+            Controls: left click thrusts away from the mouse, right click toward it, hold middle click
+            to hover. R restarts, Esc opens the menu.

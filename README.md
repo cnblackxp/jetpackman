@@ -3,6 +3,10 @@
 Mouse-controlled jetpack platformer built with PixiJS. Your feet always point at the mouse:
 left click thrusts away from it, right click toward it. Land only on green pads.
 
+**▶ Play in your browser: https://cnblackxp.github.io/jetpackman/**
+
+**Windows desktop version:** download the zip from [Releases](https://github.com/cnblackxp/jetpackman/releases/latest).
+
 Docs for development: [`docs/`](docs/) · Development diary: [`devlog/`](devlog/)
 
 ## Setup
@@ -35,6 +39,21 @@ Produces:
 
 Each build is stamped with the date and time it was made. Older builds keep their zip; their
 unzipped folder (a ~450 MB duplicate) is deleted automatically.
+
+### Releases
+
+Pushing a version tag builds the desktop zip on GitHub and attaches it to a release
+(`.github/workflows/release.yml`; tests run first):
+
+```bash
+git tag v1.0.1
+```
+
+```bash
+git push origin v1.0.1
+```
+
+The browser version on GitHub Pages updates on every push to `main`.
 
 Players unzip it and run `JetpackMan.exe`. The NW.js runtime is downloaded once from
 dl.nwjs.io, checked against the official SHA-256 checksums, and cached in `.cache/nwjs/`.
