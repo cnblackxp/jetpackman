@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jetpack Man</title>
+  <style>
+    :root {
+      --bg: #0b0e1a;
+      --panel: rgba(30, 34, 58, 0.88);
+      --panel-hover: #343b66;
+      --line: #7b88e0;
+      --line-hover: #a9b4ff;
+      --text: #dfe6ff;
+      --muted: #8f9ac6;
+      --green: #3dff9a;
+      --cyan: #7fdcff;
+      --red: #e0533d;
+    }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+      font-family: 'Segoe UI', system-ui, Arial, sans-serif; }
+    body.in-game { cursor: none; }
+    canvas { display: block; }
+
+    .screen {
+      position: fixed; inset: 0; display: none; overflow-y: auto;
+      flex-direction: column; align-items: center; justify-content: safe center; gap: 12px;
+      padding: 24px 16px; box-sizing: border-box; text-align: center;
+      background: radial-gradient(ellipse at center, rgba(11, 14, 26, 0.5), rgba(11, 14, 26, 0.94) 75%);
+      animation: fade-in 0.2s ease-out;
+    }
+    .screen.active { display: flex; }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+    h1 { margin: 0; font-size: clamp(42px, 9vw, 92px); letter-spacing: 0.08em; line-height: 1; color: #fff;
+      text-shadow: 0 0 28px rgba(127, 220, 255, 0.4); animation: hover 3s ease-in-out infinite; }
+    h1 span { color: var(--red); }
+    @keyframes hover { 50% { transform: translateY(-6px); } }
+    h2 { margin: 0 0 6px; font-size: 32px; color: #fff; }
+    .tag { margin: 4px 0 20px; color: var(--muted); font-size: 17px; }
+
+    .menu-buttons { display: flex; flex-direction: column; gap: 10px; width: min(300px, 100%); }
+    .btn {
+      display: block; padding: 12px 20px; box-sizing: border-box; width: 100%;
+      border: 2px solid var(--line); border-radius: 10px; background: var(--panel);
+      color: var(--text); font: inherit; font-size: 19px; text-decoration: none; cursor: pointer;
+      transition: transform 0.08s, background 0.15s, border-color 0.15s;
+    }
+    .btn:hover, .btn:focus-visible { background: var(--panel-hover); border-color: var(--line-hover); transform: translateY(-2px); outline: none; }
+    .btn.primary { border-color: var(--green); background: rgba(24, 84, 62, 0.9); font-weight: 600; }
+    .btn.primary:hover, .btn.primary:focus-visible { background: #1f7353; }
+    .btn.small { width: auto; min-width: 160px; font-size: 17px; }
+    .btn.danger { border-color: #c45; }
+    .btn[hidden] { display: none; }
+
+    .controls { margin-top: 22px; display: grid; grid-template-columns: auto auto; gap: 6px 14px;
+      color: var(--muted); font-size: 14px; text-align: left; }
+    .controls kbd { display: inline-block; min-width: 18px; padding: 1px 7px; border: 1px solid #4a5384;
+      border-bottom-width: 2px; border-radius: 5px; background: #1a1e33; color: var(--text); font-family: inherit; font-size: 13px; text-align: center; }
+    .controls .k { text-align: right; white-space: nowrap; }
+
+    /* Level select: a panel that always fits the window; only its body scrolls */
+    .screen.panel-screen { overflow: hidden; padding: 16px; }
+    .panel {
+      display: flex; flex-direction: column; width: min(1100px, 100%); max-height: 100%; min-height: 0;
+      background: rgba(18, 21, 38, 0.94); border: 2px solid #3a4170; border-radius: 14px;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45); overflow: hidden; text-align: left;
+    }
+    .panel-head {
+      flex: none; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      padding: 14px 18px; border-bottom: 1px solid #2e3456; background: rgba(30, 34, 58, 0.9);
+    }
+    .panel-head h2 { margin: 0; font-size: clamp(22px, 3.2vw, 30px); }
+    .panel-head .progress { flex: 1; min-width: 180px; }
+    .panel-head .progress-text { color: var(--muted); font-size: 14px; margin-bottom: 6px; }
+    .progress-bar { height: 6px; border-radius: 3px; background: #2a2f4d; overflow: hidden; }
+    .progress-bar span { display: block; height: 100%; background: var(--green); border-radius: 3px; transition: width 0.3s; }
+    .panel-body {
+      flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+      padding: 0 18px 18px; scrollbar-width: thin; scrollbar-color: #4a5384 transparent;
+    }
+    .panel-body::-webkit-scrollbar { width: 10px; }
+    .panel-body::-webkit-scrollbar-thumb { background: #4a5384; border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+    .act-head {
+      position: sticky; top: 0; z-index: 1; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+      padding: 14px 0 8px; background: rgb(18, 21, 38);
+    }
+    .act-head h3 { margin: 0; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; color: #fff; }
+    .act-head .act-num { color: var(--cyan); }
+    .act-head .about { color: var(--muted); font-size: 13px; }
+    .act-head .count { margin-left: auto; color: var(--muted); font-size: 13px; }
+    .act-head .count.complete { color: var(--green); }
+    .act-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; } /* 5 levels per act */
+    .panel-head .btn { width: auto; min-width: 0; padding: 8px 22px; font-size: 16px; }
+    .level-card {
+      position: relative; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px 9px;
+      border: 2px solid var(--line); border-radius: 10px; background: var(--panel);
+      color: var(--text); text-decoration: none; transition: transform 0.08s, background 0.15s, border-color 0.15s;
+    }
+    .level-card:hover, .level-card:focus-visible { background: var(--panel-hover); border-color: var(--line-hover); transform: translateY(-2px); outline: none; }
+    .level-card .num { font-size: 20px; font-weight: 700; color: #fff; line-height: 1.1; }
+    .level-card .name { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .level-card .best { font-size: 12px; color: var(--muted); min-height: 1.2em; }
+    .level-card .tag-peak { position: absolute; top: 8px; right: 10px; font-size: 11px; color: #ffc93d; letter-spacing: 0.04em; }
+    .level-card .check { position: absolute; top: 6px; right: 10px; color: var(--green); font-weight: 700; }
+    .level-card.done { border-color: var(--green); }
+    .level-card.done .best { color: var(--green); }
+    .level-card.next { box-shadow: 0 0 0 2px rgba(127, 220, 255, 0.5); border-color: var(--cyan); }
+    .level-card.practice { border-style: dashed; border-color: var(--cyan); }
+    @media (max-width: 760px) { .act-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 480px) {
+      .act-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .panel-head, .panel-body { padding-left: 12px; padding-right: 12px; }
+    }
+
+    .options { display: flex; flex-direction: column; gap: 6px; width: min(420px, 100%); margin-bottom: 12px;
+      background: var(--panel); border: 2px solid #3a4170; border-radius: 12px; padding: 10px 18px; box-sizing: border-box; }
+    .opt { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; font-size: 17px; }
+    .opt + .opt { border-top: 1px solid #2e3456; }
+    .opt input[type=range] { flex: 1; max-width: 190px; accent-color: var(--green); }
+    .opt input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--green); }
+    .opt .val { width: 44px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .opt > span { text-align: left; }
+    .opt .hint { display: block; color: var(--muted); font-size: 13px; }
+    body:not(.desktop) .desktop-only { display: none !important; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  </style>
+</head>
+<body>
+  <section id="menu" class="screen">
+    <h1>JETPACK <span>MAN</span></h1>
+    <p class="tag">Aim with your feet. Land only on green.</p>
+    <nav class="menu-buttons">
+      <a class="btn primary" id="playBtn" href="#/level/1">Play</a>
+      <a class="btn" id="tutorialBtn" href="#/level/1">Tutorial</a>
+      <a class="btn" href="#/levels">Level Select</a>
+      <a class="btn" id="testBtn" href="#/level/1">Test Ground</a>
+      <a class="btn" href="#/options">Options</a>
+      <a class="btn desktop-only" id="quitBtn" href="#/menu">Quit</a>
+    </nav>
+    <div class="controls">
+      <span class="k"><kbd>Left click</kbd></span><span>Thrust away from the mouse</span>
+      <span class="k"><kbd>Right click</kbd></span><span>Thrust toward the mouse</span>
+      <span class="k"><kbd>Hold middle click</kbd></span><span>Hover, sinking slowly (uses a little stamina)</span>
+      <span class="k"><kbd>R</kbd></span><span>Restart level</span>
+      <span class="k"><kbd>Esc</kbd></span><span>Back to menu</span>
+      <span class="k"><kbd>F11</kbd></span><span>Toggle fullscreen</span>
+      <span class="k"><kbd>1</kbd>–<kbd id="lastLevelKey">9</kbd></span><span>Jump to a level while playing</span>
+    </div>
+  </section>
+
+  <section id="levels" class="screen panel-screen">
+    <div class="panel">
+      <header class="panel-head">
+        <h2>Select Level</h2>
+        <div class="progress">
+          <div class="progress-text" id="levelsProgress"></div>
+          <div class="progress-bar"><span id="levelsProgressBar"></span></div>
+        </div>
+        <a class="btn small" href="#/menu">Back</a>
+      </header>
+      <div class="panel-body" id="levelGrid"></div>
+    </div>
+  </section>
+
+  <section id="options" class="screen">
+    <h2>Options</h2>
+    <div class="options">
+      <label class="opt">Volume
+        <input type="range" id="optVolume" min="0" max="100" step="5">
+        <span class="val" id="optVolumeVal"></span>
+      </label>
+      <label class="opt">Mute all sound <input type="checkbox" id="optMuted"></label>
+      <label class="opt">Screen shake <input type="checkbox" id="optShake"></label>
+      <label class="opt"><span>Heading marker<span class="hint">Shows where a thrust is carrying you; colour = speed</span></span>
+        <input type="checkbox" id="optHeading"></label>
+      <label class="opt"><span>Aim guide<span class="hint">Shows where a left click sends you</span></span>
+        <input type="checkbox" id="optAim"></label>
+      <label class="opt">Fullscreen <input type="checkbox" id="optFullscreen"></label>
+      <label class="opt desktop-only"><span>Start in fullscreen<span class="hint">Otherwise the game opens in a resizable window</span></span>
+        <input type="checkbox" id="optStartFullscreen"></label>
+    </div>
+    <div class="row">
+      <a class="btn small" href="#/menu">Back</a>
+      <button class="btn small danger" id="optReset" type="button">Reset progress</button>
+    </div>
+  </section>
+
+  <!-- Local copy (npm install puts it in vendor/) so the desktop build works offline; CDN as a fallback -->
+  <script src="vendor/pixi.min.js"></script>
+  <script>window.PIXI || document.write('<script src="https://cdn.jsdelivr.net/npm/pixi.js@7.4.2/dist/pixi.min.js"><\/script>');</script>
+  <script src="src/core.js"></script>
+  <script src="src/levels.js"></script>
+  <script src="src/audio.js"></script>
+  <script src="src/game.js"></script>
+</body>
+</html>

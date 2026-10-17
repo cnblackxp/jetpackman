@@ -1,0 +1,39 @@
+{
+  "name": "jetpackman",
+  "productName": "Jetpack Man",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mouse-controlled jetpack platformer built with PixiJS",
+  "main": "index.html",
+  "scripts": {
+    "postinstall": "node scripts/vendor.js",
+    "start": "python -m http.server 8123",
+    "test": "node --test tests/",
+    "desktop": "node scripts/run-nw.js",
+    "package": "node scripts/package-nw.js",
+    "test:desktop": "node scripts/smoke-test.js",
+    "shot": "node scripts/level-shot.js"
+  },
+  "dependencies": {
+    "pixi.js": "7.4.2"
+  },
+  "devDependencies": {
+    "adm-zip": "0.5.16"
+  },
+  "nwjs": {
+    "version": "0.117.0",
+    "appName": "JetpackMan"
+  },
+  "window": {
+    "title": "Jetpack Man",
+    "width": 1280,
+    "height": 800,
+    "min_width": 800,
+    "min_height": 560,
+    "position": "center",
+    "resizable": true,
+    "frame": true,
+    "fullscreen": false
+  },
+  "chromium-args": "--autoplay-policy=no-user-gesture-required"
+}
