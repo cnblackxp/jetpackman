@@ -29,8 +29,7 @@
 //   dash `dash` tiles (default 6) toward you at `speed` px/s (default 380), then rest `recharge` s.
 //
 // shields: gold shield pickups. { x, y }
-//   With a shield: ramming a resting/idle drone destroys it; a dashing drone breaks the shield
-//   instead of killing you; touching rock or a saw bounces you off and uses the shield up.
+//   With a shield: touching any drone destroys it; if it was mid-dash the shield breaks too; touching rock or a saw bounces you off and uses the shield up.
 (function (root) {
   // Builds a W x H map with a rock border. draw() gets helpers to place tiles.
   function buildMap(W, H, draw) {
@@ -521,7 +520,7 @@
       }),
       signs: [
         { x: 9, y: 4, text: 'Grab the GOLD SHIELD.\nWith it, ram a resting drone to destroy it.' },
-        { x: 35, y: 3.5, text: 'If a DASHING drone hits you,\nthe shield breaks instead of you.' },
+        { x: 35, y: 3.5, text: 'The shield destroys any drone it touches.\nIf one hits you mid-dash, the shield breaks too.' },
       ],
       shields: [{ x: 8, y: 10 }, { x: 30, y: 8 }],
       enemies: [{ x: 18, y: 9 }, { x: 24, y: 6 }, { x: 37, y: 9 }],

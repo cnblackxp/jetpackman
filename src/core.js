@@ -449,14 +449,16 @@
       if (!e.alive || Math.hypot(p.x - e.x, p.y - e.y) >= e.r + R) continue;
       if (p.invuln > 0) continue;
       if (e.state === 'dash') {
-        // The drone hit you: the shield breaks (and knocks you along its dash), or you die
+        // The drone hit you mid-dash: with a shield it is still destroyed, but the shield breaks
+        // in the trade (and you're knocked along its dash); without one you die
         if (!p.shield) { events.push({ type: 'dead', cause: 'enemy' }); return true; }
         p.shield = false;
         p.invuln = cfg.shieldInvuln;
         p.vx = e.dir.x * 320; p.vy = e.dir.y * 320;
         p.grounded = false;
-        stopEnemy(e, cfg);
+        e.alive = false;
         events.push({ type: 'shieldLost', enemy: e });
+        events.push({ type: 'enemyKilled', enemy: e });
       } else if (p.shield) {
         // You hit the drone with the shield: it's destroyed, you keep the shield
         e.alive = false;

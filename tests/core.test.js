@@ -519,17 +519,28 @@ test('picking up a shield; ramming an idle drone with it destroys the drone', ()
   assert.equal(p.shield, true, 'you keep the shield');
 });
 
-test('a dashing drone breaks your shield instead of killing you', () => {
+test('a dashing drone that hits your shield is destroyed, but the shield breaks', () => {
   const { world, p } = arena({ enemies: [{ x: 10, y: 4 }] });
   airborne(p, 10, 4.3);
   p.shield = true;
   Object.assign(world.enemies[0], { state: 'dash', dir: { x: 0, y: 1 } });
   const types = Core.stepPlayer(world, p, 1 / 60).map((e) => e.type);
-  assert.deepEqual(types, ['shieldLost']);
+  assert.deepEqual(types, ['shieldLost', 'enemyKilled']);
   assert.equal(p.shield, false);
   assert.ok(p.invuln > 0, 'brief safety afterwards');
-  assert.equal(world.enemies[0].alive, true);
-  assert.equal(world.enemies[0].state, 'recharge');
+  assert.equal(world.enemies[0].alive, false, 'the drone is gone');
+});
+
+test('flying into a drone with the shield always destroys it, whatever it is doing', () => {
+  for (const state of ['idle', 'windup', 'recharge', 'dash']) {
+    const { world, p } = arena({ enemies: [{ x: 10, y: 4 }] });
+    airborne(p, 10.3, 4);
+    p.shield = true;
+    Object.assign(world.enemies[0], { state, dir: { x: 1, y: 0 }, timer: 1 });
+    const types = Core.stepPlayer(world, p, 1 / 60).map((e) => e.type);
+    assert.ok(types.includes('enemyKilled'), `drone ${state}: ${types}`);
+    assert.equal(world.enemies[0].alive, false);
+  }
 });
 
 test('the shield bounces you off rock once, then is gone', () => {
