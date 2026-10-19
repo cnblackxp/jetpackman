@@ -172,7 +172,7 @@
       fuels: world.fuels.map((f) => !!f.taken),
       guns: world.guns.map((g) => !!g.taken),
       movers: world.movers.map((m) => m.alive !== false),
-      shield: !!(p && p.shield),
+      shield: p ? +p.shield || 0 : 0,
       ammo: p ? p.ammo || 0 : 0,
     };
   }
@@ -184,7 +184,6 @@
     world.enemies.forEach((e, i) => { e.alive = snap.enemies[i]; });
     world.shields.forEach((sh, i) => { sh.taken = snap.shields[i]; });
     world.coins.forEach((c, i) => { c.taken = snap.coins[i]; });
-    world.fuels.forEach((f, i) => { f.taken = !!(snap.fuels && snap.fuels[i]); });
     world.guns.forEach((g, i) => { g.taken = !!(snap.guns && snap.guns[i]); });
     world.movers.forEach((m, i) => { m.alive = !snap.movers || snap.movers[i] !== false; });
   }
@@ -360,7 +359,7 @@
       regenDelay: 0,
       heading: null,     // unit vector of the last thrust/pusher while its push lasts
       hovering: false,   // middle mouse held: slow sink instead of gravity, stamina slowly drains
-      shield: false,     // carrying the gold shield
+      shield: 0,         // gold shields carried (they stack; each hit uses one)
       invuln: 0,         // s left of safety right after the shield saved you
       fuel: 0,           // s left of free thrusting (fuel cell)
       ammo: 0,           // pistol bullets (0 = no pistol)
@@ -519,11 +518,11 @@
       }
     }
     for (const sh of world.shields) {
-      if (sh.taken || p.shield) continue;
+      if (sh.taken) continue;
       if (Math.hypot(p.x - sh.x, p.y - sh.y) < cfg.shieldPickupRadius + R) {
         sh.taken = true;
-        p.shield = true;
-        events.push({ type: 'shield', item: sh });
+        p.shield = (+p.shield || 0) + 1;
+        events.push({ type: 'shield', item: sh, count: p.shield });
       }
     }
     for (const e of world.enemies) {
@@ -533,7 +532,7 @@
         // The drone hit you mid-dash: with a shield it is still destroyed, but the shield breaks
         // in the trade (and you're knocked along its dash); without one you die
         if (!p.shield) { events.push({ type: 'dead', cause: 'enemy' }); return true; }
-        p.shield = false;
+        p.shield = Math.max(0, p.shield - 1);
         p.invuln = cfg.shieldInvuln;
         p.vx = e.dir.x * 320; p.vy = e.dir.y * 320;
         p.grounded = false;
@@ -640,7 +639,7 @@
       const sp = Math.max(Math.hypot(p.vx, p.vy), cfg.bounceMinSpeed);
       p.vx = ux * sp; p.vy = uy * sp;
       p.grounded = false;
-      p.shield = false;
+      p.shield = Math.max(0, p.shield - 1);
       p.invuln = cfg.shieldInvuln;
       events.push({ type: 'bounce' });
       return false;
@@ -677,7 +676,7 @@
         if (p.shield || p.invuln > 0) {
           bounceOffRock(level, p, cfg);
           if (p.shield) {
-            p.shield = false;
+            p.shield = Math.max(0, p.shield - 1);
             p.invuln = cfg.shieldInvuln;
             events.push({ type: 'bounce' });
           }

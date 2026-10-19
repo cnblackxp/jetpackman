@@ -114,7 +114,11 @@ Sources: [difficulty curves](https://www.abratabia.com/game-design/difficulty-cu
 | 6 Combinations | Calm Waters, Gauntlet Run, Shield Bearer, Pinball Panic, **The Nest** | drones with pushers, alcoves, gates |
 | 7 Pressure | Long Night, Saw Hunters, Crusher Ambush, Downdraft, **Fortress** | drones with saws, crushers, descents |
 | 8 Finale | Quiet Before, Spiral, Needle's Eye, Storm, **Final Ascent** | everything combined |
-| 9 Odyssey | **Odyssey** | one huge 150×50 journey: hills, crusher tower, open sky, cave, descent |
+| 9 Fuel | Fuel Line, Chimney, Long Burn, Saw Sprint, **Burnout** | fuel cells; gaps only fuel can cross (cells respawn on death) |
+| 10 Firepower | Target Practice, Saw Breaker, Drone Wall, Ammo Run, **Firefight** | the pistol vs drones and saws |
+| 11 Overdrive | Fast Lane, Orbit Overdrive, Spin Cycle, Fuel Rush, **Redline** | fast saws (Orbit Overdrive = Orbit Garden's original speed) |
+| 12 Endgame | Long Exhale, Armory, The Furnace, Siege, **Last Light** | stacked shields, everything at once |
+| 13 Odyssey | **Odyssey** | one huge 150×50 journey: hills, crusher tower, open sky, cave, descent |
 
 Bold = act peak. Each act opens with a breather. Test Ground stays as practice (★).
 

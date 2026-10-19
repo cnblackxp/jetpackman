@@ -76,10 +76,22 @@ function distanceField(level) {
 
 const clone = (p) => ({ ...p, heading: p.heading && { ...p.heading } });
 
+// Pickups and drones change as you play, and every search node has its own version of them:
+// a string of flags (fuel cells, shields, pistols taken; drones destroyed). Drones stay at home
+// (the solver doesn't simulate their dashes): treat them as fixed obstacles.
+const itemsOf = (world) => [...world.fuels, ...world.shields, ...world.guns].map((it) => (it.taken ? 1 : 0)).join('')
+  + world.enemies.map((e) => (e.alive ? 0 : 1)).join('');
+function setItems(world, flags) {
+  const all = [...world.fuels, ...world.shields, ...world.guns];
+  all.forEach((it, i) => { it.taken = flags[i] === '1'; });
+  world.enemies.forEach((e, i) => { e.alive = flags[all.length + i] !== '1'; });
+}
+
 // Simulates one decision from a node. Returns { p, clock, touching, outcome } or null if dead.
 function simulate(world, node, action, cfg) {
   const p = clone(node.p);
   world.pushers.forEach((b, i) => { b.touching = !!(node.touching & (1 << i)); });
+  setItems(world, node.items);
   let clock = node.clock;
   let thrusted = false;
   if (action) thrusted = Core.tryThrust(p, action, cfg) === 'thrust';
@@ -90,12 +102,12 @@ function simulate(world, node, action, cfg) {
     Core.updateStamina(p, FRAME, cfg);
     for (const e of Core.stepPlayer(world, p, FRAME, cfg)) {
       if (e.type === 'dead') return null;
-      if (e.type === 'won') return { p, clock, touching: 0, won: true, thrusted };
+      if (e.type === 'won') return { p, clock, touching: 0, won: true, thrusted, items: node.items };
     }
   }
   let touching = 0;
   world.pushers.forEach((b, i) => { if (b.touching) touching |= 1 << i; });
-  return { p, clock, touching, won: false, thrusted };
+  return { p, clock, touching, won: false, thrusted, items: itemsOf(world) };
 }
 
 function stateKey(s, timed) {
@@ -106,6 +118,9 @@ function stateKey(s, timed) {
     p.exhausted ? -1 : Math.floor(p.stamina / 12.5),
     p.grounded ? 1 : 0,
     s.touching,
+    s.items,
+    p.fuel > 0 ? Math.ceil(p.fuel / 3) : 0,
+    p.shield || 0,
     timed ? Math.floor(s.clock / 0.5) : 0,
   ].join(',');
 }
@@ -118,7 +133,8 @@ function solve(def, { maxExpansions = 150000, margin = 0 } = {}) {
   const world = Core.createWorld(def, cfg);
   const h = distanceField(world.level);
   const timed = world.movers.length > 0;
-  const start = { p: Core.createPlayer(world.level, cfg), clock: 0, touching: 0, parent: null, action: null, thrusts: 0 };
+  const start = { p: Core.createPlayer(world.level, cfg), clock: 0, touching: 0, parent: null, action: null, thrusts: 0,
+    items: itemsOf(world) };
   start.f = h(start.p.x, start.p.y);
   const open = new Heap();
   open.push(start);

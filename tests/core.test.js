@@ -514,22 +514,22 @@ test('picking up a shield; ramming an idle drone with it destroys the drone', ()
   const { world, p } = arena({ enemies: [{ x: 12, y: 4 }], shields: [{ x: 6, y: 4 }] });
   airborne(p, 6, 4);
   assert.deepEqual(Core.stepPlayer(world, p, 1 / 60).map((e) => e.type), ['shield']);
-  assert.equal(p.shield, true);
+  assert.equal(p.shield, 1);
   assert.equal(world.shields[0].taken, true);
   airborne(p, 12, 4.2);
   assert.deepEqual(Core.stepPlayer(world, p, 1 / 60).map((e) => e.type), ['enemyKilled']);
   assert.equal(world.enemies[0].alive, false);
-  assert.equal(p.shield, true, 'you keep the shield');
+  assert.equal(p.shield, 1, 'you keep the shield');
 });
 
 test('a dashing drone that hits your shield is destroyed, but the shield breaks', () => {
   const { world, p } = arena({ enemies: [{ x: 10, y: 4 }] });
   airborne(p, 10, 4.3);
-  p.shield = true;
+  p.shield = 1;
   Object.assign(world.enemies[0], { state: 'dash', dir: { x: 0, y: 1 } });
   const types = Core.stepPlayer(world, p, 1 / 60).map((e) => e.type);
   assert.deepEqual(types, ['shieldLost', 'enemyKilled']);
-  assert.equal(p.shield, false);
+  assert.equal(p.shield, 0);
   assert.ok(p.invuln > 0, 'brief safety afterwards');
   assert.equal(world.enemies[0].alive, false, 'the drone is gone');
 });
@@ -538,7 +538,7 @@ test('flying into a drone with the shield always destroys it, whatever it is doi
   for (const state of ['idle', 'windup', 'recharge', 'dash']) {
     const { world, p } = arena({ enemies: [{ x: 10, y: 4 }] });
     airborne(p, 10.3, 4);
-    p.shield = true;
+    p.shield = 1;
     Object.assign(world.enemies[0], { state, dir: { x: 1, y: 0 }, timer: 1 });
     const types = Core.stepPlayer(world, p, 1 / 60).map((e) => e.type);
     assert.ok(types.includes('enemyKilled'), `drone ${state}: ${types}`);
@@ -549,11 +549,11 @@ test('flying into a drone with the shield always destroys it, whatever it is doi
 test('the shield bounces you off rock once, then is gone', () => {
   const { world, p } = arena();
   airborne(p, 10, 1.5, 0, -300); // flying into the ceiling
-  p.shield = true;
+  p.shield = 1;
   const types = runAll(world, p, 0.2);
   assert.ok(types.includes('bounce'));
   assert.ok(!types.includes('dead'));
-  assert.equal(p.shield, false);
+  assert.equal(p.shield, 0);
   assert.ok(p.vy > 0, 'reflected downward');
 
   // Without the shield (and after the safety window) rock kills again
@@ -565,7 +565,7 @@ test('the shield bounces you off rock once, then is gone', () => {
 test('the shield also saves you from a saw', () => {
   const { world, p } = arena({ movers: [{ shape: 'saw', r: 0.6, path: [[10, 4]] }] });
   airborne(p, 9.3, 4, 200, 0);
-  p.shield = true;
+  p.shield = 1;
   const types = runAll(world, p, 0.1);
   assert.deepEqual(types.filter((t) => t !== 'landed'), ['bounce']);
   assert.ok(p.vx < 0, 'knocked away from the saw');
@@ -619,7 +619,7 @@ test('a checkpoint save restores drones, pickups, coins and your shield as they 
   world.enemies[0].alive = false;
   world.shields[0].taken = true;
   world.coins[0].taken = true;
-  p.shield = true;
+  p.shield = 1;
   const save = Core.snapshotActors(world, p);
   // after the checkpoint: the rest gets used up, then you die
   world.enemies[1].alive = false;
@@ -632,7 +632,7 @@ test('a checkpoint save restores drones, pickups, coins and your shield as they 
   assert.equal(world.enemies[1].x, 14 * TILE, 'surviving drones return home');
   assert.deepEqual(world.shields.map((sh) => sh.taken), [true, false]);
   assert.deepEqual(world.coins.map((c) => c.taken), [true, false]);
-  assert.equal(save.shield, true, 'the save remembers you carried a shield');
+  assert.equal(save.shield, 1, 'the save remembers you carried a shield');
 });
 
 test('deaths report what killed you', () => {
@@ -753,4 +753,25 @@ test('bullets destroy saws (gone until a reset), crushers are bulletproof', () =
   for (let i = 0; i < 30 && world.bullets.length; i++) events.push(...Core.updateBullets(world, 1 / 60));
   assert.deepEqual(events.map((e) => e.type), ['bulletHit']);
   assert.equal(world.movers[1].alive, true);
+});
+
+test('shields stack: each pickup adds one, each save uses one', () => {
+  const { world, p } = arena({ shields: [{ x: 6, y: 4 }, { x: 6.5, y: 4 }] });
+  airborne(p, 6.2, 4); p.vx = 0; p.vy = 0;
+  const types = Core.stepPlayer(world, p, 1 / 60).map((e) => e.type);
+  assert.deepEqual(types, ['shield', 'shield']);
+  assert.equal(p.shield, 2);
+  // bounce off rock: one shield left
+  airborne(p, 1.3, 4, -300, 0);
+  Core.stepPlayer(world, p, 1 / 60);
+  assert.equal(p.shield, 1);
+  assert.equal(Core.snapshotActors(world, p).shield, 1);
+});
+
+test('fuel cells always come back on respawn, even ones taken before the checkpoint', () => {
+  const { world, p } = arena({ fuels: [{ x: 6, y: 4 }] });
+  world.fuels[0].taken = true;
+  const save = Core.snapshotActors(world, p);
+  Core.restoreActors(world, save);
+  assert.equal(world.fuels[0].taken, false);
 });

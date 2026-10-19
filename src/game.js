@@ -290,7 +290,7 @@
     state.coins = state.world.coins.filter((c) => c.taken).length;
     state.p = Core.createPlayer(state.world.level, CFG, state.checkpoint);
     if (state.checkpoint && state.checkpointSave) {
-      state.p.shield = state.checkpointSave.shield;
+      state.p.shield = +state.checkpointSave.shield || 0;
       state.p.ammo = state.checkpointSave.ammo || 0;
     }
     for (const b of state.world.pushers) b.touching = false;
@@ -667,8 +667,12 @@
     const p = state.p;
     if (!p.shield || state.mode !== 'play') return;
     const pulse = 1 + Math.sin(t * 5) * 0.05;
-    g.lineStyle(2.5, 0xffd166, 0.85).beginFill(0xffd166, 0.08);
-    hexagon(g, p.x, p.y, 26 * pulse, t * 0.8).endFill();
+    // one hexagon per shield, nested and counter-rotating (drawn up to 5; more still count)
+    const n = Math.min(5, p.shield);
+    for (let i = n - 1; i >= 0; i--) {
+      g.lineStyle(2.5 - i * 0.3, 0xffd166, 0.85 - i * 0.12).beginFill(0xffd166, i === 0 ? 0.08 : 0.03);
+      hexagon(g, p.x, p.y, (26 + i * 7) * pulse, t * (i % 2 ? -0.6 : 0.8) + i * 0.4).endFill();
+    }
   }
 
   // ---------- Particles ----------
@@ -905,7 +909,7 @@
       } else if (e.type === 'shield') {
         Sfx.shieldGet();
         radialBurst(e.item.x, e.item.y, 18, [0xffd166, 0xfff3c4], 160, 0, 0.6);
-        state.toast = { text: 'Shield!', time: 1 };
+        state.toast = { text: e.count > 1 ? `Shield ×${e.count}` : 'Shield!', time: 1 };
       } else if (e.type === 'shieldLost') {
         Sfx.shieldLost();
         radialBurst(state.p.x, state.p.y, 22, [0xffd166, 0xdfe6ff], 260, 300, 0.7);

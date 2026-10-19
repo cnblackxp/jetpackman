@@ -115,7 +115,7 @@ for movers and the goal.
   `range` and `lineOfSight`) → `windup` (0.45 s, keeps aiming; events `enemyWindup`) → `dash` (moves
   `dash` tiles at `speed`, stops early at rock/pads; `enemyDash`) → `recharge` (`recharge` s) → `idle`.
   `resetActors(world)` restores drones and shield pickups on every (re)spawn.
-- **Shield** (`p.shield`, picked up in `touchActors`): touching any drone destroys it
+- **Shield** (`p.shield` is a count: shields stack, each save uses one; picked up in `touchActors`): touching any drone destroys it
   (`enemyKilled`); if it was mid-dash the shield also breaks in the trade (`shieldLost`); touching rock
   (`bounceOffRock`: push out, reflect at 0.8, at least 220 px/s outward) or a saw/crusher (knocked
   away) uses it up (`bounce`). Every save grants `shieldInvuln` (0.5 s) of safety. Without a shield,

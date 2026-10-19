@@ -358,7 +358,7 @@
       ],
     },
     {
-      // Act 3 · floating islands under a low ceiling, each circled by twin saws
+      // Act 3 · floating islands under a low ceiling, each circled by twin slow saws (Orbit Overdrive is the fast one)
       name: 'Orbit Garden',
       map: buildMap(48, 18, (b) => {
         b.pillar(1, 15, 4); b.set(2, 14, 'S');
@@ -369,12 +369,12 @@
         b.ledge(39, 7, 6); b.set(42, 5, 'G');
       }),
       movers: [
-        { shape: 'saw', r: 0.6, orbit: { x: 12, y: 12.5, radius: 3 }, speed: 80 },
-        { shape: 'saw', r: 0.6, orbit: { x: 12, y: 12.5, radius: 3 }, speed: 80, phase: 180 },
-        { shape: 'saw', r: 0.6, orbit: { x: 22, y: 8.5, radius: 3 }, speed: -90 },
-        { shape: 'saw', r: 0.6, orbit: { x: 22, y: 8.5, radius: 3 }, speed: -90, phase: 180 },
-        { shape: 'saw', r: 0.6, orbit: { x: 32, y: 12.5, radius: 3 }, speed: 100, phase: 90 },
-        { shape: 'saw', r: 0.6, orbit: { x: 32, y: 12.5, radius: 3 }, speed: 100, phase: 270 },
+        { shape: 'saw', r: 0.6, orbit: { x: 12, y: 12.5, radius: 3 }, speed: 50 },
+        { shape: 'saw', r: 0.6, orbit: { x: 12, y: 12.5, radius: 3 }, speed: 50, phase: 180 },
+        { shape: 'saw', r: 0.6, orbit: { x: 22, y: 8.5, radius: 3 }, speed: -55 },
+        { shape: 'saw', r: 0.6, orbit: { x: 22, y: 8.5, radius: 3 }, speed: -55, phase: 180 },
+        { shape: 'saw', r: 0.6, orbit: { x: 32, y: 12.5, radius: 3 }, speed: 60, phase: 90 },
+        { shape: 'saw', r: 0.6, orbit: { x: 32, y: 12.5, radius: 3 }, speed: 60, phase: 270 },
       ],
     },
     {
@@ -864,6 +864,389 @@
         { shape: 'saw', r: 0.5, path: [[12, 3]] },
       ],
     },
+    // ===================== Act 10 · Fuel =====================
+    {
+      // Act 10 opener · open sky, short gaps; a fuel cell to feel unlimited thrust
+      name: 'Fuel Line',
+      map: buildMap(64, 20, (b) => {
+        b.pillar(1, 16, 5); b.set(3, 15, 'S');
+        b.pillar(15, 15, 4);
+        b.pillar(27, 14, 4);
+        b.pillar(39, 15, 4);
+        b.pillar(51, 14, 4);
+        b.pillar(57, 15, 6); b.set(60, 13, 'G');
+      }),
+      signs: [{ x: 10, y: 6, text: 'Fuel cell: 15 s of free thrust\nThrust as much as you like' }],
+      fuels: [{ x: 9, y: 12 }, { x: 33, y: 9 }],
+    },
+    {
+      // Act 10 · a chimney of side ledges; fuel cells let you skip whole flights
+      name: 'Chimney',
+      map: buildMap(22, 56, (b) => {
+        b.pillar(8, 53, 6); b.set(10, 52, 'S');
+        b.ledge(1, 48, 6);
+        b.ledge(15, 43, 6);
+        b.ledge(1, 38, 6, 'C');
+        b.ledge(15, 33, 6);
+        b.ledge(1, 28, 6);
+        b.ledge(15, 23, 6, 'C');
+        b.ledge(1, 18, 6);
+        b.ledge(15, 13, 6);
+        b.ledge(1, 8, 6); b.set(4, 5, 'G');
+      }),
+      fuels: [{ x: 11, y: 47 }, { x: 11, y: 30 }, { x: 11, y: 16 }],
+      movers: [
+        { shape: 'saw', r: 0.55, path: [[7, 40.5], [14, 40.5]], speed: 1.5 },
+        { shape: 'saw', r: 0.55, path: [[7, 20.5], [14, 20.5]], speed: 1.8, phase: 3 },
+      ],
+    },
+    {
+      // Act 10 · gaps far too wide for one stamina bar: every checkpoint has a fuel cell
+      name: 'Long Burn',
+      map: buildMap(110, 24, (b) => {
+        b.pillar(1, 20, 5); b.set(3, 19, 'S');
+        b.rock(17, 1, 3, 10);         // hanging rock: go under
+        b.pillar(30, 18, 5, 'C');
+        b.rock(45, 13, 3, 10);        // rising rock: go over
+        b.pillar(60, 19, 5, 'C');
+        b.rock(75, 1, 3, 11);
+        b.pillar(88, 18, 5, 'C');
+        b.pillar(103, 19, 6); b.set(106, 17, 'G');
+      }),
+      fuels: [{ x: 8, y: 16 }, { x: 32, y: 14 }, { x: 62, y: 15 }, { x: 90, y: 14 }],
+    },
+    {
+      // Act 10 · a low corridor of bobbing saws; fuel lets you dodge freely
+      name: 'Saw Sprint',
+      map: buildMap(90, 20, (b) => {
+        b.pillar(1, 16, 5); b.set(3, 15, 'S');
+        b.pillar(27, 16, 4);
+        b.pillar(47, 16, 4, 'C');
+        b.pillar(67, 16, 4);
+        b.pillar(80, 16, 9); b.set(84, 14, 'G');
+      }),
+      fuels: [{ x: 8, y: 12 }, { x: 29, y: 12 }, { x: 49, y: 12 }, { x: 69, y: 12 }],
+      movers: [
+        { shape: 'saw', r: 0.55, path: [[14, 3], [14, 14]], speed: 1.8 },
+        { shape: 'saw', r: 0.55, path: [[21, 3], [21, 14]], speed: 2, phase: 5 },
+        { shape: 'saw', r: 0.55, path: [[35, 3], [35, 14]], speed: 2, phase: 2 },
+        { shape: 'saw', r: 0.55, path: [[41, 3], [41, 14]], speed: 2.2, phase: 7 },
+        { shape: 'saw', r: 0.55, path: [[55, 3], [55, 14]], speed: 2.2 },
+        { shape: 'saw', r: 0.55, path: [[61, 3], [61, 14]], speed: 2.4, phase: 4 },
+        { shape: 'saw', r: 0.55, path: [[74, 3], [74, 14]], speed: 2.4, phase: 6 },
+      ],
+    },
+    {
+      // Act 10 peak · a 100-row shaft with only three checkpoints and orbiting saws: burn fuel
+      name: 'Burnout',
+      map: buildMap(30, 100, (b) => {
+        b.pillar(12, 97, 6); b.set(14, 96, 'S');
+        b.ledge(2, 75, 5, 'C');
+        b.ledge(23, 52, 5, 'C');
+        b.ledge(2, 29, 5, 'C');
+        b.set(15, 5, 'G');
+      }),
+      fuels: [{ x: 15, y: 92 }, { x: 4, y: 71 }, { x: 25, y: 48 }, { x: 4, y: 25 }],
+      movers: [
+        { shape: 'saw', r: 0.55, orbit: { x: 15, y: 84, radius: 3 }, speed: 60 },
+        { shape: 'saw', r: 0.55, orbit: { x: 15, y: 63, radius: 4 }, speed: -70 },
+        { shape: 'saw', r: 0.55, orbit: { x: 15, y: 63, radius: 4 }, speed: -70, phase: 180 },
+        { shape: 'saw', r: 0.55, orbit: { x: 15, y: 40, radius: 4 }, speed: 80 },
+        { shape: 'saw', r: 0.55, orbit: { x: 15, y: 17, radius: 3 }, speed: 90 },
+        { shape: 'saw', r: 0.55, orbit: { x: 15, y: 17, radius: 3 }, speed: 90, phase: 180 },
+      ],
+    },
+    // ===================== Act 11 · Firepower =====================
+    {
+      // Act 11 opener · a pistol and three drones in open sky
+      name: 'Target Practice',
+      map: buildMap(60, 20, (b) => {
+        b.pillar(1, 16, 5); b.set(3, 15, 'S');
+        b.pillar(16, 16, 4);
+        b.pillar(28, 17, 4);
+        b.pillar(40, 16, 4);
+        b.pillar(52, 16, 7); b.set(55, 14, 'G');
+      }),
+      signs: [{ x: 11, y: 6, text: 'Pistol: scroll to fire\nShots go where your head points' }],
+      guns: [{ x: 8, y: 12 }, { x: 42, y: 12 }],
+      enemies: [{ x: 23, y: 6 }, { x: 34, y: 8 }, { x: 47, y: 6 }],
+    },
+    {
+      // Act 11 · a low tunnel of fast saws: shoot them or time them
+      name: 'Saw Breaker',
+      map: buildMap(70, 16, (b) => {
+        b.rock(1, 1, 68, 3);          // ceiling
+        b.pillar(1, 13, 5); b.set(3, 12, 'S');
+        b.pillar(28, 13, 5, 'C');
+        b.pillar(60, 13, 9); b.set(65, 11, 'G');
+      }),
+      guns: [{ x: 9, y: 9 }, { x: 34, y: 9 }],
+      movers: [
+        { shape: 'saw', r: 0.55, path: [[15, 5], [15, 11]], speed: 2.5 },
+        { shape: 'saw', r: 0.55, path: [[22, 5], [22, 11]], speed: 2.5, phase: 3 },
+        { shape: 'saw', r: 0.55, path: [[42, 5], [42, 11]], speed: 2.8, phase: 1 },
+        { shape: 'saw', r: 0.55, path: [[50, 5], [50, 11]], speed: 2.8, phase: 4 },
+      ],
+    },
+    {
+      // Act 11 · a shaft with drones hanging in the middle: clear the way up
+      name: 'Drone Wall',
+      map: buildMap(26, 60, (b) => {
+        b.pillar(9, 57, 8); b.set(13, 56, 'S');
+        b.ledge(1, 51, 6);
+        b.ledge(19, 45, 6, 'C');
+        b.ledge(1, 39, 6);
+        b.ledge(19, 33, 6);
+        b.ledge(1, 27, 6, 'C');
+        b.ledge(19, 21, 6);
+        b.ledge(1, 15, 6);
+        b.ledge(9, 9, 8); b.set(13, 6, 'G');
+      }),
+      guns: [{ x: 13, y: 52 }, { x: 4, y: 36 }, { x: 22, y: 18 }],
+      shields: [{ x: 22, y: 30 }],
+      enemies: [{ x: 13, y: 40 }, { x: 13, y: 30 }, { x: 13, y: 20 }, { x: 13, y: 14 }],
+    },
+    {
+      // Act 11 · a long open flight: refill the pistol along the way
+      name: 'Ammo Run',
+      map: buildMap(100, 24, (b) => {
+        b.pillar(1, 20, 5); b.set(3, 19, 'S');
+        b.pillar(18, 20, 4);
+        b.ledge(30, 14, 4);
+        b.pillar(45, 19, 4, 'C');
+        b.ledge(58, 12, 4);
+        b.pillar(72, 20, 4);
+        b.pillar(92, 19, 7); b.set(95, 17, 'G');
+      }),
+      guns: [{ x: 9, y: 15 }, { x: 40, y: 10 }, { x: 70, y: 14 }],
+      enemies: [{ x: 24, y: 8 }, { x: 37, y: 20 }, { x: 52, y: 5 }, { x: 64, y: 18 }, { x: 82, y: 9 }, { x: 86, y: 16 }],
+    },
+    {
+      // Act 11 peak · zigzag up through drones and saws
+      name: 'Firefight',
+      map: buildMap(80, 40, (b) => {
+        b.pillar(1, 36, 5); b.set(3, 35, 'S');
+        b.ledge(14, 31, 4);
+        b.ledge(24, 26, 4, 'C');
+        b.ledge(36, 30, 4);
+        b.ledge(46, 23, 4);
+        b.ledge(56, 17, 4, 'C');
+        b.ledge(66, 11, 4);
+        b.ledge(72, 6, 6); b.set(75, 3, 'G');
+      }),
+      guns: [{ x: 8, y: 31 }, { x: 38, y: 26 }, { x: 58, y: 13 }],
+      shields: [{ x: 16, y: 27 }, { x: 48, y: 19 }],
+      enemies: [{ x: 19, y: 20 }, { x: 33, y: 12 }, { x: 42, y: 18 }, { x: 52, y: 30 }, { x: 62, y: 5 }, { x: 72, y: 20 }],
+      movers: [
+        { shape: 'saw', r: 0.55, orbit: { x: 30, y: 19, radius: 3 }, speed: 70 },
+        { shape: 'saw', r: 0.55, path: [[51, 8], [51, 20]], speed: 2 },
+      ],
+    },
+    // ===================== Act 12 · Overdrive =====================
+    {
+      // Act 12 opener · fast saws sweep the floor and ceiling; stay in the middle band
+      name: 'Fast Lane',
+      map: buildMap(70, 18, (b) => {
+        b.pillar(1, 15, 5); b.set(3, 14, 'S');
+        b.ledge(14, 10, 5);
+        b.ledge(28, 11, 5);
+        b.ledge(42, 9, 5, 'C');
+        b.ledge(55, 10, 5);
+        b.ledge(62, 8, 6); b.set(65, 6, 'G');
+      }),
+      guns: [{ x: 9, y: 10 }],
+      movers: [
+        { shape: 'saw', r: 0.55, path: [[9, 15.5], [60, 15.5]], speed: 4 },
+        { shape: 'saw', r: 0.5, path: [[20, 3.5], [52, 3.5]], speed: 3.5 },
+      ],
+    },
+    {
+      // Act 12 · fast saws circle the gaps between islands
+      name: 'Spin Cycle',
+      map: buildMap(70, 22, (b) => {
+        b.pillar(1, 19, 5); b.set(3, 18, 'S');
+        b.ledge(14, 15, 4);
+        b.ledge(26, 11, 4);
+        b.ledge(38, 15, 4, 'C');
+        b.ledge(50, 11, 4);
+        b.ledge(60, 8, 6); b.set(63, 5, 'G');
+      }),
+      guns: [{ x: 8, y: 14 }, { x: 40, y: 11 }],
+      movers: [
+        { shape: 'saw', r: 0.55, orbit: { x: 21, y: 12, radius: 3 }, speed: 120 },
+        { shape: 'saw', r: 0.55, orbit: { x: 33, y: 12, radius: 3 }, speed: -130 },
+        { shape: 'saw', r: 0.55, orbit: { x: 45, y: 12, radius: 3 }, speed: 140 },
+        { shape: 'saw', r: 0.55, orbit: { x: 57, y: 9, radius: 2.5 }, speed: -150 },
+        { shape: 'saw', r: 0.55, orbit: { x: 57, y: 9, radius: 2.5 }, speed: -150, phase: 180 },
+      ],
+    },
+    {
+      // Act 12 · fuel-only gaps crossed by fast vertical saws
+      name: 'Fuel Rush',
+      map: buildMap(120, 24, (b) => {
+        b.pillar(1, 20, 5); b.set(3, 19, 'S');
+        b.pillar(40, 20, 5, 'C');
+        b.pillar(80, 20, 5, 'C');
+        b.pillar(112, 20, 7); b.set(115, 18, 'G');
+      }),
+      fuels: [{ x: 8, y: 15 }, { x: 42, y: 15 }, { x: 82, y: 15 }],
+      guns: [{ x: 10, y: 12 }, { x: 85, y: 12 }],
+      movers: [
+        { shape: 'saw', r: 0.55, path: [[16, 2], [16, 18]], speed: 4 },
+        { shape: 'saw', r: 0.55, path: [[27, 2], [27, 18]], speed: 4, phase: 8 },
+        { shape: 'saw', r: 0.55, path: [[53, 2], [53, 18]], speed: 4.5, phase: 4 },
+        { shape: 'saw', r: 0.55, path: [[65, 2], [65, 18]], speed: 4.5, phase: 12 },
+        { shape: 'saw', r: 0.55, path: [[93, 2], [93, 18]], speed: 5 },
+        { shape: 'saw', r: 0.55, path: [[103, 2], [103, 18]], speed: 5, phase: 8 },
+      ],
+    },
+    {
+      // Act 12 peak · fast saws, drones, and a long climb to the flag
+      name: 'Redline',
+      map: buildMap(90, 30, (b) => {
+        b.pillar(1, 27, 5); b.set(3, 26, 'S');
+        b.ledge(18, 22, 4);
+        b.ledge(30, 16, 4, 'C');
+        b.ledge(44, 22, 4);
+        b.ledge(56, 14, 4, 'C');
+        b.ledge(70, 20, 4);
+        b.ledge(80, 10, 6); b.set(83, 7, 'G');
+      }),
+      fuels: [{ x: 8, y: 22 }, { x: 32, y: 12 }, { x: 58, y: 10 }],
+      guns: [{ x: 11, y: 20 }, { x: 46, y: 18 }],
+      shields: [{ x: 20, y: 18 }],
+      enemies: [{ x: 40, y: 7 }, { x: 66, y: 7 }],
+      movers: [
+        { shape: 'saw', r: 0.55, orbit: { x: 24, y: 17, radius: 3 }, speed: 140 },
+        { shape: 'saw', r: 0.55, path: [[37, 5], [37, 25]], speed: 4.5 },
+        { shape: 'saw', r: 0.55, orbit: { x: 50, y: 18, radius: 3.5 }, speed: -150 },
+        { shape: 'saw', r: 0.55, path: [[63, 4], [63, 24]], speed: 5, phase: 6 },
+        { shape: 'saw', r: 0.55, orbit: { x: 76, y: 15, radius: 3 }, speed: 160 },
+      ],
+    },
+    // ===================== Act 13 · Endgame =====================
+    {
+      // Act 13 opener · shields stack: grab three and ram your way through
+      name: 'Long Exhale',
+      map: buildMap(80, 26, (b) => {
+        b.pillar(1, 22, 5); b.set(3, 21, 'S');
+        b.ledge(22, 18, 5);
+        b.ledge(36, 14, 5, 'C');
+        b.ledge(50, 18, 5);
+        b.ledge(64, 13, 5);
+        b.pillar(72, 22, 7); b.set(75, 20, 'G');
+      }),
+      signs: [{ x: 13, y: 8, text: 'Shields stack:\neach one saves you once' }],
+      shields: [{ x: 9, y: 17 }, { x: 12, y: 16 }, { x: 15, y: 15 }],
+      enemies: [{ x: 30, y: 8 }, { x: 45, y: 23 }, { x: 58, y: 7 }],
+    },
+    {
+      // Act 13 · a drone-filled tunnel with pistols and shields to spare
+      name: 'Armory',
+      map: buildMap(80, 22, (b) => {
+        b.rock(1, 1, 78, 3);          // ceiling
+        b.pillar(1, 18, 5); b.set(3, 17, 'S');
+        b.pillar(20, 18, 4);
+        b.pillar(34, 17, 4, 'C');
+        b.pillar(48, 18, 4);
+        b.pillar(62, 17, 4, 'C');
+        b.pillar(72, 18, 7); b.set(75, 16, 'G');
+      }),
+      guns: [{ x: 9, y: 14 }, { x: 36, y: 12 }, { x: 64, y: 12 }],
+      shields: [{ x: 12, y: 13 }, { x: 50, y: 13 }],
+      enemies: [{ x: 16, y: 7 }, { x: 27, y: 9 }, { x: 42, y: 7 }, { x: 55, y: 8 }, { x: 69, y: 7 }],
+    },
+    {
+      // Act 13 · a tall furnace: crushers slide across, fuel cells carry you between checkpoints
+      name: 'The Furnace',
+      map: buildMap(28, 80, (b) => {
+        b.pillar(10, 77, 8); b.set(14, 76, 'S');
+        b.ledge(1, 58, 5, 'C');
+        b.ledge(22, 38, 5, 'C');
+        b.ledge(1, 18, 5, 'C');
+        b.set(14, 4, 'G');
+      }),
+      fuels: [{ x: 14, y: 72 }, { x: 3, y: 54 }, { x: 24, y: 34 }, { x: 3, y: 14 }],
+      movers: [
+        { shape: 'block', w: 4, h: 1, path: [[4, 66], [23, 66]], speed: 3 },
+        { shape: 'block', w: 4, h: 1, path: [[4, 48], [23, 48]], speed: 3.5, phase: 2 },
+        { shape: 'block', w: 4, h: 1, path: [[4, 28], [23, 28]], speed: 4 },
+        { shape: 'block', w: 4, h: 1, path: [[4, 10], [23, 10]], speed: 4.5, phase: 5 },
+      ],
+    },
+    {
+      // Act 13 · a fortress of walls, guarded pads and saws
+      name: 'Siege',
+      map: buildMap(100, 30, (b) => {
+        b.pillar(1, 26, 5); b.set(3, 25, 'S');
+        b.ledge(20, 20, 4);
+        b.ledge(32, 14, 4, 'C');
+        b.rock(40, 1, 2, 12);         // hanging wall
+        b.ledge(46, 20, 4);
+        b.rock(54, 17, 2, 12);        // standing wall
+        b.ledge(60, 12, 4, 'C');
+        b.rock(68, 1, 2, 10);
+        b.ledge(74, 18, 4);
+        b.pillar(88, 26, 11); b.set(93, 24, 'G');
+      }),
+      guns: [{ x: 9, y: 21 }, { x: 47, y: 16 }, { x: 75, y: 14 }],
+      shields: [{ x: 12, y: 20 }, { x: 34, y: 10 }, { x: 62, y: 8 }],
+      enemies: [{ x: 26, y: 7 }, { x: 38, y: 24 }, { x: 50, y: 7 }, { x: 66, y: 23 }, { x: 81, y: 8 }, { x: 84, y: 20 }],
+      movers: [
+        { shape: 'saw', r: 0.55, orbit: { x: 27, y: 17, radius: 2.5 }, speed: 90 },
+        { shape: 'saw', r: 0.55, path: [[47, 4], [47, 15]], speed: 3 },
+        { shape: 'saw', r: 0.55, orbit: { x: 80, y: 14, radius: 3 }, speed: -110 },
+      ],
+    },
+    {
+      // Act 13 peak · up over the walls and down to the flag, through everything
+      name: 'Last Light',
+      map: buildMap(110, 40, (b) => {
+        b.pillar(1, 36, 5); b.set(3, 35, 'S');
+        b.ledge(18, 30, 4);
+        b.ledge(30, 24, 4, 'C');
+        b.rock(38, 22, 2, 17);        // blocks the low route
+        b.ledge(44, 18, 4);
+        b.ledge(56, 10, 5, 'C');
+        b.rock(64, 1, 2, 14);         // hanging wall
+        b.ledge(72, 16, 4);
+        b.ledge(84, 24, 4, 'C');
+        b.rock(90, 1, 2, 20);
+        b.ledge(96, 30, 4);
+        b.pillar(102, 36, 7); b.set(105, 34, 'G');
+      }),
+      fuels: [{ x: 8, y: 31 }, { x: 32, y: 20 }, { x: 86, y: 20 }],
+      guns: [{ x: 11, y: 29 }, { x: 58, y: 6 }, { x: 82, y: 19 }],
+      shields: [{ x: 46, y: 14 }, { x: 74, y: 12 }],
+      enemies: [{ x: 36, y: 12 }, { x: 60, y: 26 }, { x: 70, y: 5 }, { x: 98, y: 18 }],
+      movers: [
+        { shape: 'saw', r: 0.55, orbit: { x: 24, y: 26, radius: 3 }, speed: 120 },
+        { shape: 'saw', r: 0.55, path: [[50, 4], [50, 20]], speed: 4 },
+        { shape: 'saw', r: 0.55, orbit: { x: 64, y: 22, radius: 3 }, speed: -140 },
+        { shape: 'saw', r: 0.55, path: [[78, 8], [78, 30]], speed: 4.5 },
+        { shape: 'saw', r: 0.55, orbit: { x: 92, y: 30, radius: 3 }, speed: 150 },
+      ],
+    },
+    {
+      // Act 12 · Orbit Garden at full speed: the saws spin almost twice as fast
+      name: 'Orbit Overdrive',
+      map: buildMap(48, 18, (b) => {
+        b.pillar(1, 15, 4); b.set(2, 14, 'S');
+        b.rock(6, 1, 33, 4);          // ceiling: no flying over the saws
+        b.ledge(10, 12, 4);
+        b.ledge(20, 8, 4);
+        b.ledge(30, 12, 4);
+        b.ledge(39, 7, 6); b.set(42, 5, 'G');
+      }),
+      movers: [
+        { shape: 'saw', r: 0.6, orbit: { x: 12, y: 12.5, radius: 3 }, speed: 80 },
+        { shape: 'saw', r: 0.6, orbit: { x: 12, y: 12.5, radius: 3 }, speed: 80, phase: 180 },
+        { shape: 'saw', r: 0.6, orbit: { x: 22, y: 8.5, radius: 3 }, speed: -90 },
+        { shape: 'saw', r: 0.6, orbit: { x: 22, y: 8.5, radius: 3 }, speed: -90, phase: 180 },
+        { shape: 'saw', r: 0.6, orbit: { x: 32, y: 12.5, radius: 3 }, speed: 100, phase: 90 },
+        { shape: 'saw', r: 0.6, orbit: { x: 32, y: 12.5, radius: 3 }, speed: 100, phase: 270 },
+      ],
+    },
     {
       // The big one: five regions, goal at the far bottom-right, lots of open sky
       name: 'Odyssey',
@@ -975,6 +1358,14 @@
       levels: ['Long Night', 'Saw Hunters', 'Crusher Ambush', 'Downdraft', 'Fortress'] },
     { title: 'Finale', about: 'Everything at once',
       levels: ['Quiet Before', 'Spiral', "Needle's Eye", 'Storm', 'Final Ascent'] },
+    { title: 'Fuel', about: 'Fuel cells: 15 s of free thrust',
+      levels: ['Fuel Line', 'Chimney', 'Long Burn', 'Saw Sprint', 'Burnout'] },
+    { title: 'Firepower', about: 'The pistol: shoot drones and saws',
+      levels: ['Target Practice', 'Saw Breaker', 'Drone Wall', 'Ammo Run', 'Firefight'] },
+    { title: 'Overdrive', about: 'Fast saws',
+      levels: ['Fast Lane', 'Orbit Overdrive', 'Spin Cycle', 'Fuel Rush', 'Redline'] },
+    { title: 'Endgame', about: 'Stacked shields and everything at once',
+      levels: ['Long Exhale', 'Armory', 'The Furnace', 'Siege', 'Last Light'] },
     { title: 'Odyssey', about: 'One huge journey through everything',
       levels: ['Odyssey'] },
     { title: 'Practice', about: 'Open arena, not part of the campaign', practice: true,
