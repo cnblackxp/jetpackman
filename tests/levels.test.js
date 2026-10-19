@@ -105,6 +105,13 @@ for (const [i, def] of LEVELS.entries()) {
       }
     });
 
+    await t.test('coins sit in open air and do not overlap the start', () => {
+      for (const c of world.coins) {
+        assert.ok(!Core.circleHitsBlock(level, c.x, c.y, 8), `coin at ${c.x / TILE},${c.y / TILE}`);
+      }
+      assert.ok(world.coins.length > 0, 'every level has coins');
+    });
+
     await t.test('no drone can see the start pad from within range', () => {
       for (const e of world.enemies) {
         const d = Math.hypot(level.start.x - e.homeX, level.start.y - e.homeY);

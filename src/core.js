@@ -40,6 +40,7 @@
     enemyRecharge: 1.6,    // s of rest after each dash
     // Shield item
     shieldPickupRadius: 18, // px
+    coinRadius: 12,        // px: coins are collected when the player's circle touches this
     shieldInvuln: 0.5,     // s of safety after the shield saves you
     bounceRestitution: 0.8,// share of speed kept when bouncing off rock
     bounceMinSpeed: 220,   // px/s: a bounce always pushes you away at least this fast
@@ -129,6 +130,7 @@
         r: cfg.enemyRadius,
       })),
       shields: (def.shields || []).map((sh) => ({ x: sh.x * TILE, y: sh.y * TILE })),
+      coins: (def.coins || []).map((c) => ({ x: c.x * TILE, y: c.y * TILE, taken: false })),
     };
     resetActors(world);
     updateMovers(world, 0);
@@ -137,7 +139,9 @@
 
   // Puts drones back home (alive, idle) and shield pickups back in place.
   // Called when a level starts and whenever the player respawns.
-  function resetActors(world) {
+  // keepCoins: respawning at a checkpoint keeps the coins you already collected
+  function resetActors(world, keepCoins = false) {
+    if (!keepCoins) for (const c of world.coins || []) c.taken = false;
     for (const e of world.enemies) {
       Object.assign(e, { x: e.homeX, y: e.homeY, state: 'idle', timer: 0, dir: { x: 0, y: 0 }, traveled: 0, alive: true });
     }
@@ -439,6 +443,12 @@
   // Shield pickups and drone contact. Pushes events; returns true if the player died.
   function touchActors(world, p, cfg, events) {
     const R = cfg.radius;
+    for (const c of world.coins) {
+      if (!c.taken && Math.hypot(p.x - c.x, p.y - c.y) < cfg.coinRadius + R) {
+        c.taken = true;
+        events.push({ type: 'coin', coin: c });
+      }
+    }
     for (const sh of world.shields) {
       if (sh.taken || p.shield) continue;
       if (Math.hypot(p.x - sh.x, p.y - sh.y) < cfg.shieldPickupRadius + R) {
@@ -486,6 +496,7 @@
   // Advances the player by dt. Returns events in order:
   // { type: 'pusher', pusher } | { type: 'landed', refilled, checkpoint } | { type: 'dead' } | { type: 'won' }
   // | { type: 'shield' } | { type: 'shieldLost' } | { type: 'bounce' } | { type: 'enemyKilled', enemy }
+  // | { type: 'coin', coin }.  'dead' carries a cause: 'rock' | 'saw' | 'crusher' | 'enemy'
   // checkpoint is { x, y } (where to respawn) when the pad landed on is a checkpoint, else null.
   function stepPlayer(world, p, dt, cfg = DEFAULT_TUNING) {
     const events = [];
@@ -494,11 +505,13 @@
     const reachedGoal = () => Math.hypot(p.x - level.goal.x, p.y - level.goal.y) < cfg.goalRadius;
     p.invuln = Math.max(0, (p.invuln || 0) - dt);
 
-    // A saw or crusher: the shield (or the safety window after it) knocks you away instead
+    // A saw or crusher: the shield (or the safety window after it) knocks you away instead.
+    // Returns the death cause ('saw' | 'crusher') when it kills, else false.
     const hitHazard = () => {
-      if (!hitsMover(world.movers, p.x, p.y, R)) return false;
+      const hit = world.movers.find((m) => hitsMover([m], p.x, p.y, R));
+      if (!hit) return false;
       if (p.invuln > 0) return false;
-      if (!p.shield) return true;
+      if (!p.shield) return hit.shape === 'block' ? 'crusher' : 'saw';
       let best = null;
       for (const m of world.movers) {
         const d = Math.hypot(p.x - m.x, p.y - m.y);
@@ -515,7 +528,8 @@
     };
 
     if (p.grounded) {
-      if (hitHazard()) { events.push({ type: 'dead' }); return events; }
+      const cause = hitHazard();
+      if (cause) { events.push({ type: 'dead', cause }); return events; }
       if (touchActors(world, p, cfg, events)) return events;
       if (p.launched && reachedGoal()) events.push({ type: 'won' });
       if (p.grounded) return events;
@@ -549,7 +563,7 @@
             events.push({ type: 'bounce' });
           }
         } else {
-          events.push({ type: 'dead' });
+          events.push({ type: 'dead', cause: 'rock' });
           return events;
         }
       }
@@ -559,7 +573,8 @@
       }
       // The heading marker lasts until the push is used up (no longer moving that way)
       if (p.heading && p.vx * p.heading.x + p.vy * p.heading.y <= 0) p.heading = null;
-      if (hitHazard()) { events.push({ type: 'dead' }); return events; }
+      const cause = hitHazard();
+      if (cause) { events.push({ type: 'dead', cause }); return events; }
       if (touchActors(world, p, cfg, events)) return events;
       if (reachedGoal()) { events.push({ type: 'won' }); return events; }
       if (p.grounded) break;
@@ -605,15 +620,23 @@
     return out;
   }
 
+  // Most coins collected in one finished run, keyed by level name
+  function recordCoins(best, name, coins) {
+    const out = Object.assign({}, best);
+    if (out[name] == null || coins > out[name]) out[name] = coins;
+    return out;
+  }
+
   // ---------- Settings ----------
   const DEFAULT_SETTINGS = Object.freeze({
     volume: 0.6, muted: false, screenShake: true, aimLine: false,
     headingMarker: true,     // small cursor showing where the current thrust is carrying you
     startFullscreen: false,  // desktop (NW.js) build only
     playerSkin: 'classic',   // 'classic' (drawn) or 'pixel' (sprite sheet art)
+    bloodEffects: true,      // blood bursts when killed by saws/crushers (off: plain debris)
   });
   const PLAYER_SKINS = ['classic', 'pixel'];
-  const BOOLEAN_SETTINGS = ['muted', 'screenShake', 'aimLine', 'headingMarker', 'startFullscreen'];
+  const BOOLEAN_SETTINGS = ['muted', 'screenShake', 'aimLine', 'headingMarker', 'startFullscreen', 'bloodEffects'];
 
   function sanitizeSettings(raw) {
     const s = Object.assign({}, DEFAULT_SETTINGS);
@@ -632,7 +655,7 @@
     moverPosition, updateMovers, hitsMover, checkPushers,
     createPlayer, thrustDirection, tryThrust, updateStamina, refillOnLanding, stepPlayer,
     parseRoute, levelHash,
-    nextLevelAfter, firstUnbeaten, recordBest,
+    nextLevelAfter, firstUnbeaten, recordBest, recordCoins,
     DEFAULT_SETTINGS, sanitizeSettings,
   };
 });

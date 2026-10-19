@@ -141,9 +141,35 @@
       tone({ type: 'triangle', from: 260, to: 820, dur: 0.24, peak: 0.18 });
       noise({ dur: 0.2, peak: 0.12, from: 600, to: 2400, q: 1.5 });
     }),
+    // Landing on a pad: a soft, soothing two-note bell over a gentle hush
     land: play(() => {
-      tone({ type: 'sine', from: 160, to: 70, dur: 0.14, peak: 0.25 });
-      noise({ dur: 0.08, peak: 0.08, type: 'lowpass', from: 900 });
+      tone({ type: 'sine', from: 140, to: 80, dur: 0.12, peak: 0.12 });
+      tone({ type: 'sine', from: 523.25, dur: 0.9, peak: 0.05, attack: 0.02 });
+      tone({ type: 'sine', from: 783.99, dur: 1.1, peak: 0.035, delay: 0.06, attack: 0.03 });
+      noise({ dur: 0.35, peak: 0.03, type: 'lowpass', from: 700, to: 300, attack: 0.05 });
+    }),
+    // Coin: the classic two-step "ding-ding"; chained coins climb in pitch
+    coin: play((combo = 0) => {
+      const k = Math.pow(2, Math.min(combo, 12) / 12); // up a semitone per chained coin
+      tone({ type: 'square', from: 987.77 * k, dur: 0.07, peak: 0.045 });
+      tone({ type: 'square', from: 1318.51 * k, dur: 0.22, peak: 0.045, delay: 0.06 });
+      tone({ type: 'sine', from: 2637 * k, dur: 0.15, peak: 0.02, delay: 0.06 });
+    }),
+    // Saw death: a grinding buzz and a wet splat
+    deathSaw: play(() => {
+      tone({ type: 'sawtooth', from: 220, to: 90, dur: 0.35, peak: 0.08 });
+      noise({ dur: 0.3, peak: 0.35, type: 'bandpass', from: 1800, to: 400, q: 2 });
+      noise({ dur: 0.25, peak: 0.25, type: 'lowpass', from: 500, to: 120, delay: 0.08 });
+    }),
+    // Crusher death: a heavy crunch
+    deathCrush: play(() => {
+      tone({ type: 'sine', from: 90, to: 40, dur: 0.4, peak: 0.35 });
+      noise({ dur: 0.18, peak: 0.4, type: 'lowpass', from: 1500, to: 200 });
+    }),
+    // Drone death: an electric zap
+    deathZap: play(() => {
+      tone({ type: 'square', from: 1400, to: 120, dur: 0.3, peak: 0.06 });
+      noise({ dur: 0.35, peak: 0.25, type: 'highpass', from: 2500, to: 800, q: 1 });
     }),
     death: play(() => {
       noise({ dur: 0.55, peak: 0.45, type: 'lowpass', from: 1400, to: 90, q: 0.7 });

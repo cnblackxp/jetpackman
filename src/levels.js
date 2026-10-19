@@ -28,6 +28,10 @@
 //   They wake when you're within `range` tiles (default 6) and in sight, flash red for a moment,
 //   dash `dash` tiles (default 6) toward you at `speed` px/s (default 380), then rest `recharge` s.
 //
+// coins: extra collectibles placed by hand. { x, y }
+//   Every level also gets coins automatically: one every other tile just above each landing pad
+//   (except the start pad), so they're always reachable and safe. See autoCoins() below.
+//
 // shields: gold shield pickups. { x, y }
 //   With a shield: touching any drone destroys it; if it was mid-dash the shield breaks too; touching rock or a saw bounces you off and uses the shield up.
 (function (root) {
@@ -853,6 +857,76 @@
         { shape: 'saw', r: 0.5, path: [[12, 3]] },
       ],
     },
+    {
+      // The big one: five regions, goal at the far bottom-right, lots of open sky
+      name: 'Odyssey',
+      map: buildMap(150, 50, (b) => {
+        // A · rolling hills
+        b.pillar(1, 47, 5); b.set(3, 46, 'S');
+        b.pillar(10, 44, 4);
+        b.pillar(18, 41, 4);
+        b.pillar(26, 43, 4, 'C');
+        b.pillar(34, 39, 4);
+        // B · crusher tower: enter low on the left, climb, leave over the right wall
+        b.rock(40, 20, 2, 23);        // left wall, opening at the bottom
+        b.rock(52, 12, 2, 37);        // right wall
+        b.pillar(42, 47, 10);         // tower floor
+        b.ledge(42, 40, 4);
+        b.ledge(48, 34, 4, 'C');
+        b.ledge(42, 28, 4);
+        b.ledge(48, 22, 4);
+        b.ledge(44, 16, 4);
+        // C · open sky over a deep fall
+        b.ledge(58, 16, 5, 'C');
+        b.ledge(68, 24, 4);
+        b.ledge(76, 14, 4);
+        b.ledge(84, 28, 5, 'C');
+        b.ledge(90, 18, 4);
+        // D · the cave
+        b.rock(98, 1, 28, 48);
+        b.air(98, 14, 10, 5);         // entrance tunnel
+        b.air(104, 14, 4, 22);        // shaft down
+        b.air(104, 31, 20, 5);        // lower tunnel
+        b.air(119, 8, 5, 28);         // shaft up
+        b.air(119, 4, 10, 5);         // exit
+        b.checkpoint(104, 35, 4);
+        // E · the long way down to the goal
+        b.ledge(130, 12, 4, 'C');
+        b.ledge(135, 24, 4);
+        b.ledge(128, 34, 4);
+        b.pillar(140, 44, 8); b.set(144, 42, 'G');
+      }),
+      pushers: [
+        { x: 62, y: 32, angle: -70, power: 500 },     // catches you if you drop into the sky pit
+        { x: 95, y: 30, angle: -60, power: 480 },
+        { x: 134, y: 30, angle: 180, power: 400 },    // pushes you back from the goal
+      ],
+      shields: [{ x: 60, y: 12 }, { x: 79, y: 22 }, { x: 88, y: 13 }, { x: 100, y: 16 }, { x: 131, y: 8 }],
+      enemies: [
+        { x: 66, y: 12 }, { x: 74, y: 30 }, { x: 82, y: 8 }, { x: 92, y: 24 },
+        { x: 112, y: 33 }, { x: 121, y: 12 }, { x: 137, y: 18 }, { x: 142, y: 32 },
+      ],
+      movers: [
+        { shape: 'block', w: 3, h: 1, path: [[44, 37], [49, 37]], speed: 2.2 },
+        { shape: 'block', w: 3, h: 1, path: [[44, 31], [49, 31]], speed: 2.6, phase: 2 },
+        { shape: 'block', w: 3, h: 1, path: [[44, 25], [49, 25]], speed: 3, phase: 1 },
+        { shape: 'saw', r: 0.6, path: [[22, 30], [30, 30]], speed: 1.5 },
+        { shape: 'saw', r: 0.6, orbit: { x: 72, y: 20, radius: 3 }, speed: 70 },
+        { shape: 'saw', r: 0.6, orbit: { x: 86, y: 22, radius: 3 }, speed: -80 },
+        { shape: 'saw', r: 0.6, path: [[105.5, 20], [105.5, 29]], speed: 1.5 },
+        { shape: 'saw', r: 0.6, orbit: { x: 138, y: 38, radius: 3 }, speed: 90 },
+      ],
+      coins: [
+        // hill arcs
+        { x: 7, y: 42 }, { x: 14, y: 38 }, { x: 22, y: 36 }, { x: 30, y: 37 },
+        // a long line across the sky
+        ...Array.from({ length: 14 }, (_, i) => ({ x: 56 + i * 3, y: 6 })),
+        // the lower cave tunnel
+        ...Array.from({ length: 6 }, (_, i) => ({ x: 108 + i * 2, y: 33 })),
+        // the descent
+        { x: 132, y: 18 }, { x: 130, y: 28 }, { x: 136, y: 40 },
+      ],
+    },
   ];
 
   // Campaign order = the difficulty curve. Sawtooth: each act teaches one idea, develops it,
@@ -874,12 +948,39 @@
       levels: ['Long Night', 'Saw Hunters', 'Crusher Ambush', 'Downdraft', 'Fortress'] },
     { title: 'Finale', about: 'Everything at once',
       levels: ['Quiet Before', 'Spiral', "Needle's Eye", 'Storm', 'Final Ascent'] },
+    { title: 'Odyssey', about: 'One huge journey through everything',
+      levels: ['Odyssey'] },
     { title: 'Practice', about: 'Open arena, not part of the campaign', practice: true,
       levels: ['Test Ground'] },
   ];
   // Campaign order = the difficulty curve. Sawtooth: each act teaches one idea, develops it,
   // peaks on its last level, and the next act opens with an easier breather (docs/LEVEL_DESIGN.md).
   const CAMPAIGN = ACTS.flatMap((a) => a.levels);
+  // A coin every other tile just above each pad run (not the start pad), where there's open air.
+  function autoCoins(map) {
+    const coins = [];
+    let start = null;
+    map.forEach((row, r) => { const c = row.indexOf('S'); if (c >= 0) start = { c, r }; });
+    map.forEach((row, r) => {
+      for (let c = 0; c < row.length; c++) {
+        const pad = (x) => row[x] === '=' || row[x] === 'C';
+        if (!pad(c) || pad(c - 1)) continue;
+        let end = c;
+        while (pad(end + 1)) end++;
+        const isStart = start && start.r === r - 1 && start.c >= c && start.c <= end;
+        if (!isStart && r > 0) {
+          for (let x = c + ((end - c) % 2 ? 0.5 : 0); x <= end; x += 2) {
+            const col = Math.floor(x);
+            if (map[r - 1][col] === '.' || map[r - 1][col] === 'G') coins.push({ x: x + 0.5, y: r - 0.5 });
+          }
+        }
+        c = end;
+      }
+    });
+    return coins;
+  }
+  for (const d of DEFS) d.coins = [...autoCoins(d.map), ...(d.coins || [])];
+
   const byName = new Map(DEFS.map((d) => [d.name, d]));
   const LEVELS = CAMPAIGN.map((name) => {
     if (!byName.has(name)) throw new Error(`Campaign lists unknown level "${name}"`);

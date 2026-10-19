@@ -55,6 +55,7 @@ movers: [
 signs: [{ x, y, text: 'Line one\nLine two' }],   // in-world text (Tutorial)
 enemies: [{ x, y, range, dash, speed, recharge }], // drones; only x, y required (defaults 6 tiles / 6 tiles / 380 / 1.6 s)
 shields: [{ x, y }],                             // gold shield pickups
+coins: [{ x, y }],                               // extra coins (pads get coins automatically)
 practice: true,                                  // not part of the campaign (Test Ground)
 ```
 
@@ -111,6 +112,7 @@ Sources: [difficulty curves](https://www.abratabia.com/game-design/difficulty-cu
 | 6 Combinations | Calm Waters, Gauntlet Run, Shield Bearer, Pinball Panic, **The Nest** | drones with pushers, alcoves, gates |
 | 7 Pressure | Long Night, Saw Hunters, Crusher Ambush, Downdraft, **Fortress** | drones with saws, crushers, descents |
 | 8 Finale | Quiet Before, Spiral, Needle's Eye, Storm, **Final Ascent** | everything combined |
+| 9 Odyssey | **Odyssey** | one huge 150×50 journey: hills, crusher tower, open sky, cave, descent |
 
 Bold = act peak. Each act opens with a breather. Test Ground stays as practice (★).
 

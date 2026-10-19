@@ -8,6 +8,7 @@
   // ---------- Settings + progress (localStorage, optional) ----------
   const SETTINGS_KEY = 'jetpackman.settings';
   const PROGRESS_KEY = 'jetpackman.best.v2'; // { [levelName]: seconds }
+  const COINS_KEY = 'jetpackman.coins.v1';     // { [levelName]: most coins in a finished run }
 
   function readJSON(key) {
     try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
@@ -50,7 +51,7 @@
   document.body.appendChild(app.view);
   app.view.addEventListener('contextmenu', (e) => e.preventDefault());
 
-  const starLayer = new PIXI.Graphics();
+  const starLayer = new PIXI.Container(); // parallax star fields (tiling sprites)
   const world = new PIXI.Container();
   const signLayer = new PIXI.Container();
   const terrainG = new PIXI.Graphics();
@@ -70,7 +71,12 @@
   let classicArt, pixelArt;
 
   const player = makePlayer();
-  world.addChild(signLayer, pusherG, terrainG, goalG, moverLayer, pickupG, enemyG, aimG, player, auraG, fxG, headingG, staminaG);
+  const decalG = new PIXI.Graphics();   // splatter that stays for a few seconds
+  const rippleG = new PIXI.Graphics();  // landing waves
+  const coinG = new PIXI.Graphics();
+  const popupLayer = new PIXI.Container(); // floating "+1"s
+  world.addChild(signLayer, pusherG, terrainG, decalG, rippleG, goalG, coinG, moverLayer, pickupG, enemyG, aimG,
+    player, auraG, fxG, headingG, staminaG, popupLayer);
 
   const hud = new PIXI.Container();
   const hudText = new PIXI.Text('', { fontFamily: 'Segoe UI, Arial', fontSize: 18, fill: 0xdfe6ff });
@@ -92,7 +98,6 @@
   reticle.moveTo(0, -13).lineTo(0, -4).moveTo(0, 4).lineTo(0, 13);
 
   app.stage.addChild(starLayer, world, hud, reticle);
-  drawStars();
 
   // Feet point toward +y locally, so rotating by (aim - 90deg) points the legs at the mouse.
   function makePlayer() {
@@ -138,13 +143,42 @@
     pixelArt.texture = PIXEL_FRAMES[moving ? Math.floor(elapsed * 8) % 4 : 3];
   }
 
+  // Three star fields at different depths. Each scrolls with the camera by its own factor and drifts
+  // slowly on its own; the nearest one twinkles a little. Kept slow so it never distracts.
+  const STAR_FIELDS = [
+    { factor: 0.1, drift: 2.5, count: 260, size: [0.3, 0.9], alpha: [0.12, 0.4] },
+    { factor: 0.25, drift: 5, count: 130, size: [0.5, 1.3], alpha: [0.25, 0.65] },
+    { factor: 0.45, drift: 9, count: 40, size: [0.9, 1.8], alpha: [0.45, 0.9] },
+  ];
+  const starTiles = [];
   function drawStars() {
-    starLayer.clear();
-    for (let i = 0; i < 400; i++) {
-      starLayer.beginFill(0xffffff, 0.2 + Math.random() * 0.6)
-        .drawCircle(Math.random() * 4000, Math.random() * 3000, Math.random() * 1.4 + 0.3).endFill();
+    const SIZE = 1024;
+    for (const f of STAR_FIELDS) {
+      const g = new PIXI.Graphics();
+      g.beginFill(0x000000, 0.001).drawRect(0, 0, SIZE, SIZE).endFill();
+      for (let i = 0; i < f.count; i++) {
+        const r = f.size[0] + Math.random() * (f.size[1] - f.size[0]);
+        const a = f.alpha[0] + Math.random() * (f.alpha[1] - f.alpha[0]);
+        g.beginFill(Math.random() < 0.15 ? 0xbfe3ff : 0xffffff, a).drawCircle(Math.random() * SIZE, Math.random() * SIZE, r).endFill();
+      }
+      const tex = app.renderer.generateTexture(g, { region: new PIXI.Rectangle(0, 0, SIZE, SIZE) });
+      g.destroy();
+      const ts = new PIXI.TilingSprite(tex, app.screen.width, app.screen.height);
+      starLayer.addChild(ts);
+      starTiles.push({ ts, ...f, offset: Math.random() * SIZE });
     }
   }
+
+  function updateStars(dt, cx, cy) {
+    starTiles.forEach((s, i) => {
+      s.offset += s.drift * dt;
+      s.ts.width = app.screen.width;
+      s.ts.height = app.screen.height;
+      s.ts.tilePosition.set(-cx * s.factor - s.offset, -cy * s.factor - s.offset * 0.3);
+      if (i === starTiles.length - 1) s.ts.alpha = 0.85 + Math.sin(elapsed * 0.9) * 0.15;
+    });
+  }
+  drawStars();
 
   // ---------- Game state ----------
   const state = {
@@ -159,7 +193,10 @@
     checkpoint: null, // { x, y } respawn point after reaching a checkpoint pad
     toast: { text: '', time: 0 }, // short message over the HUD
     cam: { x: 0, y: 0 },
+    look: { x: 0, y: 0 }, // camera lead in the direction of travel
     shake: 0,
+    coins: 0,         // collected this run
+    slowmo: 0,        // seconds of slow motion left (death / win)
   };
   const mouse = { x: 0, y: 0 };
   let particles = [];
@@ -167,6 +204,11 @@
   let elapsed = 0;
   let refillFlash = 0; // seconds the stamina bar glows after a pad refill
   let photoMode = false; // camera shows the whole level (smoke test screenshots)
+  let ripples = [];      // { x, y, age, delay }
+  let splats = [];       // { x, y, r, life, color }
+  let popups = [];       // { text, life }
+  let coinCombo = 0, lastCoinAt = -10;
+  const squash = { x: 1, y: 1 }; // player squash & stretch (eases back to 1)
 
   function loadLevel(i) {
     state.levelIndex = i;
@@ -175,6 +217,10 @@
     state.checkpoint = null;
     pusherFlash = new Map();
     particles = [];
+    ripples = [];
+    splats = [];
+    popups.forEach((p) => p.text.destroy());
+    popups = [];
     drawTerrain();
     buildMoverGraphics();
     buildSigns();
@@ -187,7 +233,8 @@
   // without one, or with fromStart (R key), the level restarts.
   function resetPlayer(fromStart = false) {
     if (fromStart) state.checkpoint = null;
-    Core.resetActors(state.world);
+    Core.resetActors(state.world, !!state.checkpoint); // coins stay collected at a checkpoint
+    state.coins = state.world.coins.filter((c) => c.taken).length;
     state.p = Core.createPlayer(state.world.level, CFG, state.checkpoint);
     for (const b of state.world.pushers) b.touching = false;
     player.visible = true;
@@ -529,30 +576,136 @@
     if (result === 'thrust') {
       flameBurst(p, dir);
       Sfx.thrust(toward);
+      squash.x = 0.86; squash.y = 1.18;
     } else if (result === 'empty') {
       smokePuff(p, dir);
       Sfx.empty();
     }
   }
 
-  function die() {
+  const BLOOD = [0x8a0303, 0xb00b0b, 0xd11a1a, 0x5c0000, 0xe0302a];
+  const DEBRIS = [0xe0533d, 0x8a92ad, 0xf2c9a0, 0x2b3b6b, 0xffe066];
+
+  // Different deaths look and sound different: saws and crushers spill blood (unless turned off),
+  // drones fry you with sparks, rock smashes you into debris.
+  function die(cause = 'rock') {
     const p = state.p;
     state.mode = 'dead';
     state.deaths++;
     state.respawnTimer = RESPAWN_DELAY;
-    if (settings.screenShake) state.shake = 12;
+    state.slowmo = 0.35;
     player.visible = false;
-    radialBurst(p.x, p.y, 40, [0xe0533d, 0x8a92ad, 0xf2c9a0, 0x2b3b6b, 0xffe066], 320, 900, 1.2);
-    Sfx.death();
+    const blood = settings.bloodEffects && (cause === 'saw' || cause === 'crusher');
+    if (settings.screenShake) state.shake = cause === 'crusher' ? 18 : 12;
+
+    if (blood && cause === 'saw') {
+      radialBurst(p.x, p.y, 70, BLOOD, 420, 1100, 1.3);
+      radialBurst(p.x, p.y, 16, DEBRIS, 260, 900, 1.1);
+      splatter(p.x, p.y, 16, 60);
+      Sfx.deathSaw();
+    } else if (blood && cause === 'crusher') {
+      burst(70, () => {
+        const s = 200 + Math.random() * 380, side = Math.random() < 0.5 ? -1 : 1;
+        return { x: p.x, y: p.y, vx: side * s, vy: (Math.random() - 0.7) * 160, life: 0.8 + Math.random() * 0.5,
+          max: 1.3, size: 2 + Math.random() * 3, color: BLOOD[(Math.random() * BLOOD.length) | 0], gravity: 900 };
+      });
+      splatter(p.x, p.y, 14, 70, 0.35);
+      Sfx.deathCrush();
+    } else if (cause === 'enemy') {
+      radialBurst(p.x, p.y, 36, [0x9b5de5, 0x7fdcff, 0xffffff, 0xff4d6d], 360, 300, 0.8);
+      radialBurst(p.x, p.y, 18, DEBRIS, 240, 900, 1.1);
+      Sfx.deathZap();
+    } else {
+      radialBurst(p.x, p.y, 40, DEBRIS, 320, 900, 1.2);
+      radialBurst(p.x, p.y, 16, [0x6b7180, 0x2e3350], 160, 600, 0.9); // rock dust
+      Sfx.death();
+    }
+  }
+
+  // Blood drops that stay where they land for a few seconds
+  function splatter(x, y, n, spread, flatten = 1) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, d = Math.random() * spread;
+      splats.push({ x: x + Math.cos(a) * d, y: y + Math.sin(a) * d * flatten, r: 2 + Math.random() * 5,
+        life: 5 + Math.random() * 2, color: BLOOD[(Math.random() * BLOOD.length) | 0] });
+    }
+    if (splats.length > 200) splats.splice(0, splats.length - 200);
   }
 
   function win() {
     const next = Core.nextLevelAfter(LEVELS, state.levelIndex);
     state.mode = next == null ? 'done' : 'won';
-    writeJSON(PROGRESS_KEY, Core.recordBest(loadBest(), LEVELS[state.levelIndex].name, state.levelTime));
+    const name = LEVELS[state.levelIndex].name;
+    writeJSON(PROGRESS_KEY, Core.recordBest(loadBest(), name, state.levelTime));
+    writeJSON(COINS_KEY, Core.recordCoins(readJSON(COINS_KEY) || {}, name, state.coins));
     const { x, y } = state.world.level.goal;
     radialBurst(x, y, 50, [0x3dff9a, 0xdfe6ff, 0xffe066], 260, 200, 1.4);
+    radialBurst(x, y, 40, [0xffc93d, 0xff4d6d, 0x7fdcff, 0x9b5de5], 380, 500, 1.8); // confetti
+    ripples.push({ x, y, age: 0, delay: 0, big: true }, { x, y, age: 0, delay: 0.15, big: true });
+    state.slowmo = 0.5;
     Sfx.win();
+  }
+
+  // ---------- Coins, ripples, splats, popups ----------
+  function drawCoins(t) {
+    const g = coinG;
+    g.clear();
+    for (const c of state.world.coins) {
+      if (c.taken) continue;
+      const y = c.y + Math.sin(t * 2.5 + c.x * 0.05) * 3;
+      const spin = Math.cos(t * 3.2 + c.x * 0.02);
+      const w = Math.max(1.5, Math.abs(spin) * 9);
+      g.beginFill(0xffc93d, 0.18).drawCircle(c.x, y, 14).endFill();
+      g.beginFill(0xd99a1c).drawEllipse(c.x, y, w, 9).endFill();
+      g.beginFill(0xffd95e).drawEllipse(c.x, y, Math.max(1, w - 2), 7).endFill();
+      if (spin > 0.3) g.beginFill(0xfff3c4, 0.9).drawEllipse(c.x - w * 0.3, y - 3, w * 0.25, 2.5).endFill();
+    }
+  }
+
+  function collectCoin(c) {
+    state.coins++;
+    coinCombo = elapsed - lastCoinAt < 0.9 ? coinCombo + 1 : 0;
+    lastCoinAt = elapsed;
+    Sfx.coin(coinCombo);
+    radialBurst(c.x, c.y, 12, [0xffd95e, 0xfff3c4, 0xffffff], 150, 0, 0.45);
+    const text = new PIXI.Text(coinCombo > 2 ? `+1 ×${coinCombo + 1}` : '+1', {
+      fontFamily: 'Segoe UI, Arial', fontSize: 15, fontWeight: '700', fill: 0xffd95e,
+      stroke: 0x3a2f10, strokeThickness: 3,
+    });
+    text.anchor.set(0.5);
+    text.position.set(c.x, c.y - 10);
+    popupLayer.addChild(text);
+    popups.push({ text, life: 0.8 });
+  }
+
+  function updateEffects(dt) {
+    // landing waves: thin ellipses spreading along the pad
+    rippleG.clear();
+    ripples = ripples.filter((r) => (r.age += dt) < r.delay + (r.big ? 1.1 : 0.8));
+    for (const r of ripples) {
+      const k = (r.age - r.delay) / (r.big ? 1.1 : 0.8);
+      if (k < 0) continue;
+      const rx = (r.big ? 20 : 8) + k * (r.big ? 120 : 64);
+      rippleG.lineStyle(2, 0x3dff9a, (1 - k) * 0.8).drawEllipse(r.x, r.y, rx, rx * (r.big ? 1 : 0.16));
+    }
+    rippleG.lineStyle(0);
+    // splatter fades out
+    decalG.clear();
+    splats = splats.filter((s) => (s.life -= dt) > 0);
+    for (const s of splats) decalG.beginFill(s.color, Math.min(1, s.life / 1.5) * 0.85).drawCircle(s.x, s.y, s.r).endFill();
+    // floating +1s
+    popups = popups.filter((p) => {
+      p.life -= dt;
+      p.text.y -= 40 * dt;
+      p.text.alpha = Math.min(1, p.life * 2.5);
+      if (p.life <= 0) { p.text.destroy(); return false; }
+      return true;
+    });
+    // squash & stretch eases back
+    const k = 1 - Math.exp(-12 * dt);
+    squash.x += (1 - squash.x) * k;
+    squash.y += (1 - squash.y) * k;
+    player.scale.set(squash.x, squash.y);
   }
 
   function handleEvents(events) {
@@ -568,6 +721,12 @@
         Sfx.pusher();
       } else if (e.type === 'landed') {
         Sfx.land();
+        const fy = state.p.y + CFG.standOffset; // pad surface
+        ripples.push({ x: state.p.x, y: fy, age: 0, delay: 0 }, { x: state.p.x, y: fy, age: 0, delay: 0.12 });
+        burst(10, () => ({ x: state.p.x + (Math.random() - 0.5) * 30, y: fy - 2, vx: (Math.random() - 0.5) * 40,
+          vy: -20 - Math.random() * 40, life: 0.6 + Math.random() * 0.4, max: 1, size: 1.5 + Math.random() * 1.5,
+          color: Math.random() < 0.5 ? 0x3dff9a : 0xc8ffe4, gravity: -20 }));
+        squash.x = 1.22; squash.y = 0.78;
         if (e.refilled) { Sfx.refill(); refillFlash = 0.5; }
         const cp = e.checkpoint;
         if (cp && !(state.checkpoint && state.checkpoint.x === cp.x && state.checkpoint.y === cp.y)) {
@@ -598,8 +757,10 @@
       } else if (e.type === 'enemyKilled') {
         Sfx.enemyKilled();
         radialBurst(e.enemy.x, e.enemy.y, 30, [0x9b5de5, 0xff4d6d, 0xdfe6ff], 280, 400, 0.9);
+      } else if (e.type === 'coin') {
+        collectCoin(e.coin);
       } else if (e.type === 'dead') {
-        die();
+        die(e.cause);
       } else if (e.type === 'won') {
         win();
       }
@@ -651,7 +812,9 @@
 
   // ---------- Main loop ----------
   app.ticker.add(() => {
-    const dt = Math.min(app.ticker.deltaMS / 1000, 1 / 30);
+    const rawDt = Math.min(app.ticker.deltaMS / 1000, 1 / 30);
+    state.slowmo = Math.max(0, state.slowmo - rawDt);
+    const dt = rawDt * (state.slowmo > 0 ? 0.3 : 1); // brief slow motion after a death or a win
     elapsed += dt;
     const p = state.p;
     const w = state.world;
@@ -668,6 +831,12 @@
       if (p.launched) state.levelTime += dt;
       handleEvents(Core.updateEnemies(w, p, dt, CFG));
       handleEvents(Core.stepPlayer(w, p, dt, CFG));
+      // faint streaks when flying fast
+      const sp = Math.hypot(p.vx, p.vy);
+      if (sp > 420 && !p.hovering && state.mode === 'play' && Math.random() < 0.7) {
+        particles.push({ x: p.x + (Math.random() - 0.5) * 8, y: p.y + (Math.random() - 0.5) * 8, vx: 0, vy: 0,
+          life: 0.22, max: 0.22, size: 2.2, color: 0xdfe6ff, gravity: 0 });
+      }
     } else if (playing && state.mode === 'dead') {
       Core.updateEnemies(w, null, dt, CFG);
       state.respawnTimer -= dt;
@@ -683,6 +852,8 @@
     drawMovers();
     drawPushers(elapsed);
     drawPickups(elapsed);
+    drawCoins(elapsed);
+    updateEffects(dt);
     drawEnemies(elapsed);
     drawAura(elapsed);
     drawGoal(elapsed);
@@ -705,13 +876,18 @@
       const s = Math.min(sw / mw, sh / mh, 1);
       world.scale.set(s);
       world.position.set(Math.round((sw - mw * s) / 2), Math.round((sh - mh * s) / 2));
-      starLayer.position.set(0, 0);
+      updateStars(0, 0, 0);
       return;
     }
     world.scale.set(1);
     const k = 1 - Math.exp(-6 * dt);
-    state.cam.x += (state.p.x - state.cam.x) * k;
-    state.cam.y += (state.p.y - state.cam.y) * k;
+    // lead slightly in the direction of travel so you see more of where you're going
+    const p = state.p, lk = 1 - Math.exp(-2.5 * dt);
+    const lx = Math.max(-110, Math.min(110, p.vx * 0.2)), ly = Math.max(-80, Math.min(80, p.vy * 0.15));
+    state.look.x += (lx - state.look.x) * lk;
+    state.look.y += (ly - state.look.y) * lk;
+    state.cam.x += (p.x + state.look.x - state.cam.x) * k;
+    state.cam.y += (p.y + state.look.y - state.cam.y) * k;
     let cx = mw <= sw ? mw / 2 : Math.max(sw / 2, Math.min(mw - sw / 2, state.cam.x));
     let cy = mh <= sh ? mh / 2 : Math.max(sh / 2, Math.min(mh - sh / 2, state.cam.y));
     if (state.shake > 0) {
@@ -720,14 +896,15 @@
       state.shake = Math.max(0, state.shake - 40 * dt);
     }
     world.position.set(Math.round(sw / 2 - cx), Math.round(sh / 2 - cy));
-    starLayer.position.set(-cx * 0.3, -cy * 0.3);
+    updateStars(dt, cx, cy);
   }
 
   function updateHud() {
     if (state.screen !== 'game') return;
     const lvl = LEVELS[state.levelIndex];
     hudText.text = `${lvl.practice ? 'Practice' : `Level ${state.levelIndex + 1}`}: ${lvl.name}` +
-      `    Time ${state.levelTime.toFixed(1)}s    Deaths ${state.deaths}    [R] restart  [Esc] menu`;
+      `    Time ${state.levelTime.toFixed(1)}s    Deaths ${state.deaths}    ◆ ${state.coins}/${state.world.coins.length}` +
+      `    [R] restart  [Esc] menu`;
     msgText.position.set(app.screen.width / 2, app.screen.height * 0.16);
     versionText.position.set(app.screen.width - 14, 14);
     state.toast.time = Math.max(0, state.toast.time - app.ticker.deltaMS / 1000);
@@ -738,7 +915,7 @@
     } else if (state.mode === 'dead') {
       msgText.text = 'Crashed!';
     } else if (state.mode === 'won') {
-      msgText.text = `Level complete in ${state.levelTime.toFixed(1)}s!\nClick for the next level`;
+      msgText.text = `Level complete in ${state.levelTime.toFixed(1)}s!  ◆ ${state.coins}/${state.world.coins.length}\nClick for the next level`;
     } else if (state.mode === 'done') {
       msgText.text = lvl.practice
         ? `Reached the goal in ${state.levelTime.toFixed(1)}s!\nClick for level select`
@@ -794,7 +971,11 @@
     body.innerHTML = '';
     const campaign = LEVELS.filter((l) => !l.practice);
     const beaten = campaign.filter((l) => best[l.name] != null).length;
-    document.getElementById('levelsProgress').textContent = `${beaten} of ${campaign.length} levels beaten`;
+    const bestCoins = readJSON(COINS_KEY) || {};
+    const coinsGot = LEVELS.reduce((n, l) => n + (bestCoins[l.name] || 0), 0);
+    const coinsAll = LEVELS.reduce((n, l) => n + (l.coins ? l.coins.length : 0), 0);
+    document.getElementById('levelsProgress').textContent =
+      `${beaten} of ${campaign.length} levels beaten  ·  ◆ ${coinsGot} / ${coinsAll} coins`;
     document.getElementById('levelsProgressBar').style.width = `${(beaten / campaign.length) * 100}%`;
     const next = Core.firstUnbeaten(LEVELS, best);
     const acts = LEVELS.acts || [{ title: 'Levels', about: '', levels: LEVELS.map((_, i) => i) }];
@@ -828,7 +1009,9 @@
         a.querySelector('.num').textContent = l.practice ? '★' : i + 1;
         a.querySelector('.name').textContent = l.name;
         a.title = l.name;
-        a.querySelector('.best').textContent = t != null ? `Best ${t.toFixed(1)}s` : l.practice ? 'Practice' : i === next ? 'Up next' : '';
+        const got = bestCoins[l.name], total = l.coins ? l.coins.length : 0;
+        a.querySelector('.best').textContent = (t != null ? `Best ${t.toFixed(1)}s` : l.practice ? 'Practice' : i === next ? 'Up next' : '') +
+          (got != null ? `  ◆ ${got}/${total}` : '');
         if (t != null) a.insertAdjacentHTML('beforeend', '<span class="check">✓</span>');
         else if (!l.practice && k === act.levels.length - 1) a.insertAdjacentHTML('beforeend', '<span class="tag-peak">PEAK</span>');
         if (i === next) nextCard = a;
@@ -848,6 +1031,7 @@
     document.getElementById('optShake').checked = settings.screenShake;
     document.getElementById('optAim').checked = settings.aimLine;
     document.getElementById('optSkin').value = settings.playerSkin;
+    document.getElementById('optBlood').checked = settings.bloodEffects;
     document.getElementById('optHeading').checked = settings.headingMarker;
     document.getElementById('optFullscreen').checked = isFullscreen();
     document.getElementById('optStartFullscreen').checked = settings.startFullscreen;
@@ -869,6 +1053,7 @@
   document.getElementById('optFullscreen').addEventListener('change', (e) => setFullscreen(e.target.checked));
   document.getElementById('optStartFullscreen').addEventListener('change', (e) => saveSettings({ startFullscreen: e.target.checked }));
   document.getElementById('optSkin').addEventListener('change', (e) => { saveSettings({ playerSkin: e.target.value }); applySkin(); });
+  document.getElementById('optBlood').addEventListener('change', (e) => saveSettings({ bloodEffects: e.target.checked }));
   document.getElementById('versionTag').innerHTML = `v${Core.VERSION} <b>${Core.STAGE}</b>`;
   document.getElementById('quitBtn').addEventListener('click', (e) => {
     e.preventDefault();

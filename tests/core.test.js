@@ -420,7 +420,7 @@ test('sanitizeSettings fills defaults and rejects bad values', () => {
   });
   assert.deepEqual(s, {
     volume: 1, muted: true, screenShake: true, aimLine: true, headingMarker: false, startFullscreen: false,
-    playerSkin: 'classic',
+    playerSkin: 'classic', bloodEffects: true,
   });
   assert.equal(Core.sanitizeSettings({ playerSkin: 'pixel' }).playerSkin, 'pixel');
   assert.equal(Core.sanitizeSettings({ playerSkin: 'robot' }).playerSkin, 'classic', 'unknown skins fall back');
@@ -595,4 +595,47 @@ test('the win radius is generous: wider than the drawn flag ring', () => {
   airborne(p, g.x / TILE, g.y / TILE);
   p.x = g.x + 38; // well outside the 28 px ring, inside the glow
   assert.deepEqual(Core.stepPlayer(world, p, 1 / 60).map((e) => e.type), ['won']);
+});
+
+// ---------- Coins and death causes ----------
+
+test('coins are collected once and reset on a full restart, but not at a checkpoint', () => {
+  const { world, p } = arena({ coins: [{ x: 6, y: 4 }, { x: 12, y: 4 }] });
+  airborne(p, 6, 4);
+  assert.deepEqual(Core.stepPlayer(world, p, 1 / 60).map((e) => e.type), ['coin']);
+  assert.equal(world.coins[0].taken, true);
+  assert.deepEqual(Core.stepPlayer(world, p, 1 / 60).map((e) => e.type), [], 'not collected twice');
+
+  Core.resetActors(world, true);
+  assert.equal(world.coins[0].taken, true, 'kept when respawning at a checkpoint');
+  Core.resetActors(world);
+  assert.equal(world.coins[0].taken, false, 'back on a full restart');
+});
+
+test('deaths report what killed you', () => {
+  let s = arena();
+  airborne(s.p, 10, 1.5, 0, -300);
+  assert.equal(runAll(s.world, s.p, 0.3).length, 1);
+  s = arena(); airborne(s.p, 10, 1.5, 0, -300);
+  assert.deepEqual(Core.stepPlayer(s.world, s.p, 0.2).filter((e) => e.type === 'dead').map((e) => e.cause), ['rock']);
+
+  s = arena({ movers: [{ shape: 'saw', r: 0.6, path: [[10, 4]] }] });
+  airborne(s.p, 10, 4.3);
+  assert.equal(Core.stepPlayer(s.world, s.p, 1 / 60)[0].cause, 'saw');
+
+  s = arena({ movers: [{ shape: 'block', w: 2, h: 1, path: [[10, 4]] }] });
+  airborne(s.p, 10, 4.3);
+  assert.equal(Core.stepPlayer(s.world, s.p, 1 / 60)[0].cause, 'crusher');
+
+  s = arena({ enemies: [{ x: 10, y: 4 }] });
+  airborne(s.p, 10, 4.3);
+  assert.equal(Core.stepPlayer(s.world, s.p, 1 / 60)[0].cause, 'enemy');
+});
+
+test('recordCoins keeps the most coins collected', () => {
+  let best = Core.recordCoins({}, 'a', 3);
+  best = Core.recordCoins(best, 'a', 2);
+  assert.equal(best.a, 3);
+  best = Core.recordCoins(best, 'a', 5);
+  assert.equal(best.a, 5);
 });

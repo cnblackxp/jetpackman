@@ -146,6 +146,21 @@ just the canvas. `route()` reads `location.hash` via `Core.parseRoute` and calls
 Navigation always goes through `navigate(hash)` so history works. A level loads on every
 `#/level/<n>` route. Menus show level 1 as a live backdrop.
 
+## Coins and effects
+
+- **Coins** (`world.coins`, collected in `touchActors` → `coin` event). Every level gets coins above its
+  pads automatically (`autoCoins` in levels.js) plus any listed by hand. A respawn at a checkpoint keeps
+  collected coins (`resetActors(world, true)`); a full restart resets them. The HUD shows `◆ got/total`;
+  the most coins of a finished run per level are saved in `jetpackman.coins.v1` (`recordCoins`).
+- **Deaths carry a cause** (`'rock' | 'saw' | 'crusher' | 'enemy'`); `die(cause)` in game.js picks the
+  effect and sound: blood burst + splatter that fades over ~6 s (saw), a flattened splat (crusher),
+  electric sparks (drone), rubble and dust (rock). `settings.bloodEffects` off → plain debris.
+- **Feel (no gameplay numbers changed):** green ripples + motes on landing, squash on landing and stretch on
+  thrust (`squash`, eases back), camera leads slightly toward the velocity (`state.look`), faint
+  streaks above 420 px/s, 0.35 s / 0.5 s of slow motion (×0.3) after a death / win, confetti on win.
+- **Stars:** three `TilingSprite` fields (parallax 0.1 / 0.25 / 0.45) that also drift slowly
+  (2.5 / 5 / 9 px/s); the nearest twinkles gently.
+
 ## Character art
 
 `player` is a container holding two looks: `classicArt` (the drawn figure) and `pixelArt` (a sprite
