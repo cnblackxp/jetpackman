@@ -341,15 +341,15 @@
         b.pillar(44, 9, 7); b.set(47, 7, 'G');
       }),
       movers: [
-        // each lane: two saws on the same track, half a cycle apart
-        { shape: 'saw', r: 0.8, path: [[9, 5.8], [9, 11.2]], speed: 2.0 },
-        { shape: 'saw', r: 0.8, path: [[9, 5.8], [9, 11.2]], speed: 2.0, phase: 5.4 },
-        { shape: 'saw', r: 0.8, path: [[19, 5.8], [19, 11.2]], speed: 2.3 },
-        { shape: 'saw', r: 0.8, path: [[19, 5.8], [19, 11.2]], speed: 2.3, phase: 5.4 },
-        { shape: 'saw', r: 0.8, path: [[29, 5.8], [29, 11.2]], speed: 2.6, phase: 2 },
-        { shape: 'saw', r: 0.8, path: [[29, 5.8], [29, 11.2]], speed: 2.6, phase: 7.4 },
-        { shape: 'saw', r: 0.8, path: [[39, 5.8], [39, 11.2]], speed: 2.9, phase: 1 },
-        { shape: 'saw', r: 0.8, path: [[39, 5.8], [39, 11.2]], speed: 2.9, phase: 6.4 },
+        // each lane: two saws on the same track, half a cycle apart (r 0.8 -> 0.55: too big)
+        { shape: 'saw', r: 0.55, path: [[9, 5.8], [9, 11.2]], speed: 2.0 },
+        { shape: 'saw', r: 0.55, path: [[9, 5.8], [9, 11.2]], speed: 2.0, phase: 5.4 },
+        { shape: 'saw', r: 0.55, path: [[19, 5.8], [19, 11.2]], speed: 2.3 },
+        { shape: 'saw', r: 0.55, path: [[19, 5.8], [19, 11.2]], speed: 2.3, phase: 5.4 },
+        { shape: 'saw', r: 0.55, path: [[29, 5.8], [29, 11.2]], speed: 2.6, phase: 2 },
+        { shape: 'saw', r: 0.55, path: [[29, 5.8], [29, 11.2]], speed: 2.6, phase: 7.4 },
+        { shape: 'saw', r: 0.55, path: [[39, 5.8], [39, 11.2]], speed: 2.9, phase: 1 },
+        { shape: 'saw', r: 0.55, path: [[39, 5.8], [39, 11.2]], speed: 2.9, phase: 6.4 },
       ],
     },
     {
