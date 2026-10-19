@@ -55,6 +55,8 @@ movers: [
 signs: [{ x, y, text: 'Line one\nLine two' }],   // in-world text (Tutorial)
 enemies: [{ x, y, range, dash, speed, recharge }], // drones; only x, y required (defaults 6 tiles / 6 tiles / 380 / 1.6 s)
 shields: [{ x, y }],                             // gold shield pickups
+fuels: [{ x, y }],                               // fuel cells: 15 s of free thrusting
+guns: [{ x, y }],                                // pistol pickups: 3 bullets, scroll to fire
 coins: [{ x, y }],                               // extra coins (pads get coins automatically)
 practice: true,                                  // not part of the campaign (Test Ground)
 ```

@@ -2,6 +2,8 @@
 
 Mouse-controlled jetpack platformer built with PixiJS. Your feet always point at the mouse:
 left click thrusts away from it, right click toward it. Land only on green pads.
+Middle click hovers; scroll fires the pistol once you've picked one up; fuel cells give 15 s of
+unlimited thrust.
 
 **▶ Play in your browser: https://cnblackxp.github.io/jetpackman/**
 

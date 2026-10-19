@@ -62,13 +62,14 @@
   const fxG = new PIXI.Graphics();
   const staminaG = new PIXI.Graphics(); // separate from the player so it never rotates
   const headingG = new PIXI.Graphics();
-  const pickupG = new PIXI.Graphics();  // shield items
+  const pickupG = new PIXI.Graphics();  // shield, fuel cell and pistol pickups
+  const bulletG = new PIXI.Graphics();
   const enemyG = new PIXI.Graphics();   // drones
   const auraG = new PIXI.Graphics();    // shield bubble around the player
   // The player is a container with two looks: the drawn "classic" figure and the pixel-art sprite
   // (Options → Character art). Both face +x with the feet toward +y, so the same rotation works.
   const PIXEL_FRAMES = [0, 1, 2, 3].map((i) => PIXI.Texture.from(`assets/sprites/jetpackman-fly-${i}.png`));
-  let classicArt, pixelArt;
+  let classicArt, pixelArt, gunArt;
 
   const player = makePlayer();
   const decalG = new PIXI.Graphics();   // splatter that stays for a few seconds
@@ -76,7 +77,7 @@
   const coinG = new PIXI.Graphics();
   const popupLayer = new PIXI.Container(); // floating "+1"s
   world.addChild(signLayer, pusherG, terrainG, decalG, rippleG, goalG, coinG, moverLayer, pickupG, enemyG, aimG,
-    player, auraG, fxG, headingG, staminaG, popupLayer);
+    player, auraG, bulletG, fxG, headingG, staminaG, popupLayer);
 
   const hud = new PIXI.Container();
   const hudText = new PIXI.Text('', { fontFamily: 'Segoe UI, Arial', fontSize: 18, fill: 0xdfe6ff });
@@ -160,7 +161,15 @@
 
     classicArt = c;
     pixelArt = s;
-    root.addChild(c, s);
+    // Pistol held by the head, barrel pointing out past it (where bullets go)
+    const gun = new PIXI.Graphics();
+    gun.beginFill(0x2b2f3a).drawRoundedRect(4, -18, 5, 9, 1.5).endFill();       // grip
+    gun.beginFill(0x4a5163).drawRoundedRect(3, -30, 6, 14, 1.5).endFill();      // slide / barrel
+    gun.beginFill(0x9aa3b5).drawRect(4, -30, 4, 2).endFill();                   // muzzle
+    gun.beginFill(0xffd166).drawRect(5, -14, 2, 2).endFill();                    // little highlight
+    gun.visible = false;
+    gunArt = gun;
+    root.addChild(c, s, gun);
     applySkin();
     return root;
   }
@@ -280,7 +289,10 @@
     else Core.resetActors(state.world);
     state.coins = state.world.coins.filter((c) => c.taken).length;
     state.p = Core.createPlayer(state.world.level, CFG, state.checkpoint);
-    if (state.checkpoint && state.checkpointSave) state.p.shield = state.checkpointSave.shield;
+    if (state.checkpoint && state.checkpointSave) {
+      state.p.shield = state.checkpointSave.shield;
+      state.p.ammo = state.checkpointSave.ammo || 0;
+    }
     for (const b of state.world.pushers) b.touching = false;
     player.visible = true;
     state.mode = 'play';
@@ -422,7 +434,9 @@
     g.clear();
     if (state.mode !== 'play' || state.screen !== 'game') return;
     const w = 44, h = 6, x = p.x - w / 2, y = p.y - 38;
-    const color = p.hovering ? 0x7fdcff // hovering
+    const fueled = p.fuel > 0;
+    const color = fueled ? (Math.sin(elapsed * 10) > 0 ? 0x7fdcff : 0xc8f4ff) // fuel cell: unlimited
+      : p.hovering ? 0x7fdcff // hovering
       : p.exhausted ? 0xff4d4d : p.stamina >= CFG.thrustCost ? 0x3dff9a : 0xffc93d;
     g.beginFill(0x000000, 0.55).drawRoundedRect(x - 2, y - 2, w + 4, h + 4, 3).endFill();
     g.beginFill(color, p.exhausted ? 0.6 + Math.sin(elapsed * 14) * 0.3 : 1)
@@ -433,7 +447,77 @@
     if (refillFlash > 0) {
       g.lineStyle(2, 0xffffff, refillFlash * 1.6).drawRoundedRect(x - 3, y - 3, w + 6, h + 6, 4);
     }
+    g.lineStyle(0);
+    if (fueled) { // time left on the fuel cell, under the bar
+      const k = p.fuel / CFG.fuelDuration;
+      const warn = p.fuel < 3 && Math.sin(elapsed * 16) > 0;
+      g.beginFill(warn ? 0xff4d4d : 0x7fdcff, 0.9).drawRect(x, y + h + 3, w * k, 2).endFill();
+    }
+    // bullets left, as little brass rounds above the bar
+    for (let i = 0; i < (p.ammo || 0); i++) {
+      const bx = x + w / 2 - ((p.ammo - 1) * 9) / 2 + i * 9, by = y - 12;
+      g.beginFill(0xd9a441).drawRect(bx - 2, by, 4, 6).endFill();
+      g.beginFill(0xb87333).drawRoundedRect(bx - 2, by - 4, 4, 5, 2).endFill();
+    }
   }
+
+  // Fuel cell (glowing canister) and pistol pickups
+  function drawItems(t) {
+    const g = pickupG;
+    for (const f of state.world.fuels) {
+      if (f.taken) continue;
+      const y = f.y + Math.sin(t * 3 + f.x) * 4;
+      g.lineStyle(0).beginFill(0x7fdcff, 0.15 + Math.sin(t * 5) * 0.05).drawCircle(f.x, y, 20).endFill();
+      g.beginFill(0x1d3a52).drawRoundedRect(f.x - 7, y - 11, 14, 22, 4).endFill();
+      g.beginFill(0x7fdcff).drawRoundedRect(f.x - 5, y - 9 + (1 - (Math.sin(t * 2) * 0.5 + 0.5)) * 6, 10, 18 - (1 - (Math.sin(t * 2) * 0.5 + 0.5)) * 6, 3).endFill();
+      g.beginFill(0xdff6ff).drawPolygon([f.x + 1, y - 7, f.x - 3, y + 1, f.x, y + 1, f.x - 1, y + 7, f.x + 3, y - 1, f.x, y - 1]).endFill();
+      g.beginFill(0x9aa3b5).drawRect(f.x - 3, y - 14, 6, 3).endFill();
+    }
+    for (const gn of state.world.guns) {
+      if (gn.taken) continue;
+      const y = gn.y + Math.sin(t * 3 + gn.x) * 4;
+      g.lineStyle(2, 0xd9a441, 0.8).beginFill(0x2a2210, 0.6).drawCircle(gn.x, y, 17).endFill();
+      g.lineStyle(0).beginFill(0x4a5163).drawRoundedRect(gn.x - 10, y - 6, 18, 6, 1.5).endFill();
+      g.beginFill(0x2b2f3a).drawRoundedRect(gn.x - 8, y - 1, 6, 9, 1.5).endFill();
+      g.beginFill(0x9aa3b5).drawRect(gn.x + 6, y - 6, 2, 3).endFill();
+    }
+  }
+
+  function drawBullets() {
+    const g = bulletG;
+    g.clear();
+    for (const b of state.world.bullets) {
+      const sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp;
+      g.lineStyle(3, 0xffe066, 0.35).moveTo(b.x - ux * 22, b.y - uy * 22).lineTo(b.x, b.y);
+      g.lineStyle(0).beginFill(0xfff3c4).drawCircle(b.x, b.y, 3).endFill();
+    }
+  }
+
+  // Scroll to shoot: one shot per scroll; stop scrolling before the next one.
+  let wheelLatched = false, wheelTimer = null;
+  function onWheel(e) {
+    if (state.screen !== 'game') return;
+    e.preventDefault();
+    clearTimeout(wheelTimer);
+    wheelTimer = setTimeout(() => { wheelLatched = false; }, 220);
+    if (wheelLatched) return;
+    wheelLatched = true;
+    if (state.mode !== 'play') return;
+    const p = state.p, m = mouseWorld();
+    const dir = Core.thrustDirection(p, m.x, m.y, false); // where the head points: away from the mouse
+    if (!dir) return;
+    if (Core.fire(state.world, p, dir, CFG) === 'fired') {
+      Sfx.shoot();
+      burst(8, () => ({ x: p.x + dir.x * 24, y: p.y + dir.y * 24, vx: dir.x * (120 + Math.random() * 200) + (Math.random() - 0.5) * 80,
+        vy: dir.y * (120 + Math.random() * 200) + (Math.random() - 0.5) * 80, life: 0.15, max: 0.15, size: 2.5,
+        color: Math.random() < 0.5 ? 0xffe066 : 0xffffff, gravity: 0 }));
+      if (settings.screenShake) state.shake = Math.max(state.shake, 3);
+      if (p.ammo === 0) state.toast = { text: 'Out of bullets', time: 1 };
+    } else {
+      Sfx.gunEmpty();
+    }
+  }
+  app.view.addEventListener('wheel', onWheel, { passive: false });
 
   // Colour for a speed: cyan (slow) -> green -> yellow -> orange -> red (max speed)
   const SPEED_COLORS = [0x7fdcff, 0x3dff9a, 0xffe066, 0xff9f2e, 0xff4d4d];
@@ -804,6 +888,17 @@
       } else if (e.type === 'enemyKilled') {
         Sfx.enemyKilled();
         radialBurst(e.enemy.x, e.enemy.y, 30, [0x9b5de5, 0xff4d6d, 0xdfe6ff], 280, 400, 0.9);
+      } else if (e.type === 'fuel') {
+        Sfx.fuelGet();
+        radialBurst(e.item.x, e.item.y, 22, [0x7fdcff, 0xdff6ff, 0xffffff], 200, 0, 0.6);
+        state.toast = { text: `Fuel cell! Unlimited thrust for ${CFG.fuelDuration}s`, time: 1.6 };
+      } else if (e.type === 'gun') {
+        Sfx.gunGet();
+        radialBurst(e.item.x, e.item.y, 16, [0xd9a441, 0xffe066, 0xdfe6ff], 160, 0, 0.5);
+        state.toast = { text: `Pistol: ${CFG.gunAmmo} shots. Scroll to fire`, time: 1.8 };
+      } else if (e.type === 'bulletHit') {
+        Sfx.bulletHit();
+        radialBurst(e.x, e.y, 8, [0xffe066, 0x8a92ad], 160, 300, 0.35);
       } else if (e.type === 'coin') {
         collectCoin(e.coin);
       } else if (e.type === 'dead') {
@@ -881,10 +976,14 @@
       if (hover && !p.hovering) Sfx.hover();
       p.hovering = hover;
       if (hover && Math.random() < dt * 30) hoverPuff(p);
-      if (Core.updateStamina(p, dt, CFG) === 'refilled') Sfx.refilled();
+      const st = Core.updateStamina(p, dt, CFG);
+      if (st === 'refilled') Sfx.refilled();
+      else if (st === 'fuelOut') { Sfx.fuelOut(); state.toast = { text: 'Fuel cell empty', time: 1 }; }
+      if (p.fuel > 0 && p.fuel < 3 && Math.floor(p.fuel * 2) !== Math.floor((p.fuel + dt) * 2)) Sfx.fuelTick();
       if (p.launched) state.levelTime += dt;
       handleEvents(Core.updateEnemies(w, p, dt, CFG));
       handleEvents(Core.stepPlayer(w, p, dt, CFG));
+      handleEvents(Core.updateBullets(w, dt, CFG));
       // faint streaks when flying fast
       const sp = Math.hypot(p.vx, p.vy);
       if (sp > 420 && !p.hovering && state.mode === 'play' && Math.random() < 0.7) {
@@ -905,6 +1004,9 @@
     drawMovers();
     drawPushers(elapsed);
     drawPickups(elapsed);
+    drawItems(elapsed);
+    drawBullets();
+    if (gunArt) gunArt.visible = state.mode === 'play' && state.p.ammo > 0;
     drawCoins(elapsed);
     updateEffects(dt);
     drawEnemies(elapsed);

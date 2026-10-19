@@ -104,6 +104,13 @@ for movers and the goal.
   airborne): gravity is replaced by a gentle sink (velocity eases to `hoverSinkSpeed` = 30 px/s down,
   sideways motion dies out, rate `hoverDrag`). Stamina never refills while hovering and drains at
   `hoverDrain` (3/s); at 0 the usual lockout starts but hovering keeps working.
+- **Fuel cell** (`p.fuel`, picked up in `touchActors`): `fuelDuration` (15 s) of free thrusts;
+  `updateStamina` keeps stamina full and returns `'fuelOut'` when it ends.
+- **Pistol** (`p.ammo`, picked up in `touchActors` only while `ammo < gunAmmo`, so pickups never
+  stack past 3): game.js fires on a mouse-wheel gesture (latched until 220 ms without wheel events,
+  so one scroll = one shot) via `fire(world, p, dir)`, `dir` = where the head points (away from the
+  mouse). `updateBullets` moves bullets, stops them at rock/pads (`bulletHit`) and kills drones
+  (`enemyKilled`, `byBullet`). Ammo is part of checkpoint snapshots.
 - **Drones** (`updateEnemies`, called by game.js before `stepPlayer`): `idle` → (player within
   `range` and `lineOfSight`) → `windup` (0.45 s, keeps aiming; events `enemyWindup`) → `dash` (moves
   `dash` tiles at `speed`, stops early at rock/pads; `enemyDash`) → `recharge` (`recharge` s) → `idle`.

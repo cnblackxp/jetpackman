@@ -662,3 +662,67 @@ test('recordCoins keeps the most coins collected', () => {
   best = Core.recordCoins(best, 'a', 5);
   assert.equal(best.a, 5);
 });
+
+// ---------- Fuel cell and pistol ----------
+
+test('a fuel cell gives 15 s of free thrusting, then stamina works normally again', () => {
+  const { world, p } = arena({ fuels: [{ x: 6, y: 4 }] });
+  airborne(p, 6, 4);
+  assert.deepEqual(Core.stepPlayer(world, p, 1 / 60).map((e) => e.type), ['fuel']);
+  assert.equal(p.fuel, CFG.fuelDuration);
+  for (let i = 0; i < 20; i++) {
+    p.cooldown = 0;
+    assert.equal(Core.tryThrust(p, { x: 0, y: -1 }), 'thrust', `free thrust ${i + 1}`);
+  }
+  assert.equal(p.stamina, CFG.staminaMax, 'stamina locked full');
+  let out = null;
+  for (let t = 0; t < CFG.fuelDuration + 0.1 && !out; t += 1 / 60) out = Core.updateStamina(p, 1 / 60);
+  assert.equal(out, 'fuelOut');
+  for (let i = 0; i < 4; i++) { p.cooldown = 0; Core.tryThrust(p, { x: 0, y: -1 }); }
+  p.cooldown = 0;
+  assert.equal(Core.tryThrust(p, { x: 0, y: -1 }), 'empty', 'back to 4 thrusts per bar');
+});
+
+test('a pistol gives 3 bullets; another one refills to 3 but never stacks', () => {
+  const { world, p } = arena({ guns: [{ x: 6, y: 4 }, { x: 10, y: 4 }] });
+  airborne(p, 6, 4);
+  assert.deepEqual(Core.stepPlayer(world, p, 1 / 60).map((e) => e.type), ['gun']);
+  assert.equal(p.ammo, CFG.gunAmmo);
+  airborne(p, 10, 4);
+  assert.deepEqual(Core.stepPlayer(world, p, 1 / 60).map((e) => e.type), [], 'full: the second pistol stays');
+  assert.equal(world.guns[1].taken, false);
+  p.ammo = 1;
+  assert.deepEqual(Core.stepPlayer(world, p, 1 / 60).map((e) => e.type), ['gun']);
+  assert.equal(p.ammo, CFG.gunAmmo, 'refilled to 3, not 4');
+});
+
+test('bullets fly from the head, destroy a drone, and stop at rock', () => {
+  const { world, p } = arena({ enemies: [{ x: 6, y: 2 }] });
+  airborne(p, 6, 7); p.vx = 0; p.vy = 0;
+  assert.equal(Core.fire(world, p, { x: 0, y: -1 }), 'empty', 'no pistol, no shot');
+  p.ammo = 3;
+  assert.equal(Core.fire(world, p, { x: 0, y: -1 }), 'fired');
+  assert.equal(p.ammo, 2);
+  assert.ok(world.bullets[0].y < p.y - 20, 'starts at the head');
+  let events = [];
+  for (let i = 0; i < 30 && world.bullets.length; i++) events.push(...Core.updateBullets(world, 1 / 60));
+  assert.deepEqual(events.map((e) => e.type), ['enemyKilled']);
+  assert.equal(world.enemies[0].alive, false);
+
+  Core.fire(world, p, { x: 1, y: 0 }); // toward the right wall
+  events = [];
+  for (let i = 0; i < 60 && world.bullets.length; i++) events.push(...Core.updateBullets(world, 1 / 60));
+  assert.deepEqual(events.map((e) => e.type), ['bulletHit']);
+  assert.equal(world.bullets.length, 0);
+});
+
+test('checkpoint saves remember items and ammo', () => {
+  const { world, p } = arena({ fuels: [{ x: 6, y: 4 }], guns: [{ x: 10, y: 4 }] });
+  world.guns[0].taken = true; p.ammo = 2;
+  const save = Core.snapshotActors(world, p);
+  world.fuels[0].taken = true;
+  Core.restoreActors(world, save);
+  assert.equal(world.guns[0].taken, true);
+  assert.equal(world.fuels[0].taken, false);
+  assert.equal(save.ammo, 2);
+});

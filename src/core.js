@@ -41,6 +41,11 @@
     // Shield item
     shieldPickupRadius: 18, // px
     coinRadius: 12,        // px: coins are collected when the player's circle touches this
+    itemRadius: 16,        // px: fuel cell / pistol pickups
+    fuelDuration: 15,      // s of free thrusting from a fuel cell (stamina locked full)
+    gunAmmo: 3,            // bullets per pistol; picking up another refills to this, never more
+    bulletSpeed: 900,      // px/s
+    bulletLife: 1.2,       // s before a bullet fizzles
     shieldInvuln: 0.5,     // s of safety after the shield saves you
     bounceRestitution: 0.8,// share of speed kept when bouncing off rock
     bounceMinSpeed: 220,   // px/s: a bounce always pushes you away at least this fast
@@ -131,6 +136,9 @@
       })),
       shields: (def.shields || []).map((sh) => ({ x: sh.x * TILE, y: sh.y * TILE })),
       coins: (def.coins || []).map((c) => ({ x: c.x * TILE, y: c.y * TILE, taken: false })),
+      fuels: (def.fuels || []).map((f) => ({ x: f.x * TILE, y: f.y * TILE, taken: false })),
+      guns: (def.guns || []).map((g) => ({ x: g.x * TILE, y: g.y * TILE, taken: false })),
+      bullets: [],
     };
     resetActors(world);
     updateMovers(world, 0);
@@ -147,6 +155,9 @@
       Object.assign(e, { x: e.homeX, y: e.homeY, state: 'idle', timer: 0, dir: { x: 0, y: 0 }, traveled: 0, alive: true });
     }
     for (const sh of world.shields) sh.taken = false;
+    for (const f of world.fuels) f.taken = false;
+    for (const g of world.guns) g.taken = false;
+    world.bullets = [];
   }
 
   // Checkpoint save: what's been destroyed / picked up so far, and whether you carry a shield.
@@ -155,7 +166,10 @@
       enemies: world.enemies.map((e) => e.alive),
       shields: world.shields.map((sh) => !!sh.taken),
       coins: world.coins.map((c) => !!c.taken),
+      fuels: world.fuels.map((f) => !!f.taken),
+      guns: world.guns.map((g) => !!g.taken),
       shield: !!(p && p.shield),
+      ammo: p ? p.ammo || 0 : 0,
     };
   }
 
@@ -166,6 +180,8 @@
     world.enemies.forEach((e, i) => { e.alive = snap.enemies[i]; });
     world.shields.forEach((sh, i) => { sh.taken = snap.shields[i]; });
     world.coins.forEach((c, i) => { c.taken = snap.coins[i]; });
+    world.fuels.forEach((f, i) => { f.taken = !!(snap.fuels && snap.fuels[i]); });
+    world.guns.forEach((g, i) => { g.taken = !!(snap.guns && snap.guns[i]); });
   }
 
   // ---------- Collision ----------
@@ -340,6 +356,8 @@
       hovering: false,   // middle mouse held: slow sink instead of gravity, stamina slowly drains
       shield: false,     // carrying the gold shield
       invuln: 0,         // s left of safety right after the shield saved you
+      fuel: 0,           // s left of free thrusting (fuel cell)
+      ammo: 0,           // pistol bullets (0 = no pistol)
     };
   }
 
@@ -358,13 +376,16 @@
   function tryThrust(p, dir, cfg = DEFAULT_TUNING) {
     if (!dir || p.cooldown > 0) return 'cooldown';
     if (p.grounded && dir.y > 0.35) return 'blocked';
-    if (p.exhausted || p.stamina <= 0) {
+    const free = p.fuel > 0; // fuel cell: thrusting costs nothing
+    if (!free && (p.exhausted || p.stamina <= 0)) {
       p.cooldown = cfg.clickCooldown;
       return 'empty';
     }
-    p.stamina -= cfg.thrustCost;
-    p.regenDelay = cfg.regenDelay;
-    if (p.stamina <= 0) { p.stamina = 0; p.exhausted = true; }
+    if (!free) {
+      p.stamina -= cfg.thrustCost;
+      p.regenDelay = cfg.regenDelay;
+      if (p.stamina <= 0) { p.stamina = 0; p.exhausted = true; }
+    }
 
     // Mostly cancel motion fighting the thrust so every thrust responds
     const along = p.vx * dir.x + p.vy * dir.y;
@@ -382,9 +403,16 @@
     return 'thrust';
   }
 
-  // Returns 'refilled' on the frame an exhausted bar becomes usable again.
+  // Returns 'refilled' on the frame an exhausted bar becomes usable again, 'fuelOut' when a fuel
+  // cell runs out.
   function updateStamina(p, dt, cfg = DEFAULT_TUNING) {
     p.cooldown = Math.max(0, p.cooldown - dt);
+    if (p.fuel > 0) { // fuel cell: stamina locked full
+      p.fuel = Math.max(0, p.fuel - dt);
+      p.stamina = cfg.staminaMax;
+      p.exhausted = false;
+      return p.fuel === 0 ? 'fuelOut' : null;
+    }
     // Hovering never refills stamina; it drains it very slowly (and keeps working at 0)
     if (p.hovering && !p.grounded) {
       if (p.stamina > 0) {
@@ -463,6 +491,21 @@
   // Shield pickups and drone contact. Pushes events; returns true if the player died.
   function touchActors(world, p, cfg, events) {
     const R = cfg.radius;
+    for (const f of world.fuels) {
+      if (!f.taken && Math.hypot(p.x - f.x, p.y - f.y) < cfg.itemRadius + R) {
+        f.taken = true;
+        p.fuel = cfg.fuelDuration;
+        events.push({ type: 'fuel', item: f });
+      }
+    }
+    for (const g of world.guns) {
+      // a full pistol leaves the pickup where it is (ammo never stacks past gunAmmo)
+      if (!g.taken && p.ammo < cfg.gunAmmo && Math.hypot(p.x - g.x, p.y - g.y) < cfg.itemRadius + R) {
+        g.taken = true;
+        p.ammo = cfg.gunAmmo;
+        events.push({ type: 'gun', item: g });
+      }
+    }
     for (const c of world.coins) {
       if (!c.taken && Math.hypot(p.x - c.x, p.y - c.y) < cfg.coinRadius + R) {
         c.taken = true;
@@ -501,6 +544,43 @@
       }
     }
     return false;
+  }
+
+  // ---------- Pistol ----------
+  // Fires one bullet from the player's head in `dir` (a unit vector: the way the head points,
+  // i.e. away from the mouse). Returns 'fired' or 'empty'.
+  function fire(world, p, dir, cfg = DEFAULT_TUNING) {
+    if (!dir || !(p.ammo > 0)) return 'empty';
+    p.ammo--;
+    world.bullets.push({
+      x: p.x + dir.x * 22, y: p.y + dir.y * 22,
+      vx: dir.x * cfg.bulletSpeed, vy: dir.y * cfg.bulletSpeed, life: cfg.bulletLife,
+    });
+    return 'fired';
+  }
+
+  // Moves bullets; they stop at rock or pads and destroy drones they touch.
+  // Returns events: { type: 'bulletHit', x, y } | { type: 'enemyKilled', enemy, byBullet: true }
+  function updateBullets(world, dt, cfg = DEFAULT_TUNING) {
+    const events = [];
+    world.bullets = world.bullets.filter((b) => {
+      b.life -= dt;
+      if (b.life <= 0) return false;
+      const steps = Math.max(1, Math.ceil((Math.hypot(b.vx, b.vy) * dt) / 6));
+      for (let i = 0; i < steps; i++) {
+        b.x += (b.vx * dt) / steps;
+        b.y += (b.vy * dt) / steps;
+        if (circleHitsBlock(world.level, b.x, b.y, 3)) { events.push({ type: 'bulletHit', x: b.x, y: b.y }); return false; }
+        const e = world.enemies.find((en) => en.alive && Math.hypot(b.x - en.x, b.y - en.y) < en.r + 4);
+        if (e) {
+          e.alive = false;
+          events.push({ type: 'enemyKilled', enemy: e, byBullet: true });
+          return false;
+        }
+      }
+      return true;
+    });
+    return events;
   }
 
   // Landing on a pad refills stamina completely. Returns true if anything was refilled.
@@ -671,7 +751,7 @@
     TILE, VERSION, STAGE, DEFAULT_TUNING, PLAYER_SKINS,
     parseLevel, createWorld, tileAt, isSolid, isPad, isCheckpoint, isBlock,
     circleHitsSolid, circleHitsBlock, lineOfSight, bounceOffRock, resolvePads,
-    updateEnemies, resetActors, snapshotActors, restoreActors,
+    updateEnemies, resetActors, snapshotActors, restoreActors, fire, updateBullets,
     moverPosition, updateMovers, hitsMover, checkPushers,
     createPlayer, thrustDirection, tryThrust, updateStamina, refillOnLanding, stepPlayer,
     parseRoute, levelHash,

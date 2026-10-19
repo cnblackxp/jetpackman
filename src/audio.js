@@ -155,6 +155,37 @@
       tone({ type: 'square', from: 1318.51 * k, dur: 0.22, peak: 0.045, delay: 0.06 });
       tone({ type: 'sine', from: 2637 * k, dur: 0.15, peak: 0.02, delay: 0.06 });
     }),
+    // Fuel cell: a rising power-up whoosh
+    fuelGet: play(() => {
+      tone({ type: 'sawtooth', from: 180, to: 720, dur: 0.45, peak: 0.05, attack: 0.03 });
+      tone({ type: 'sine', from: 360, to: 1440, dur: 0.45, peak: 0.08, attack: 0.03 });
+      noise({ dur: 0.4, peak: 0.08, from: 600, to: 3000, q: 1.5 });
+    }),
+    // Fuel running low: soft ticks; empty: a power-down
+    fuelTick: play(() => tone({ type: 'square', from: 1200, dur: 0.04, peak: 0.03 })),
+    fuelOut: play(() => {
+      tone({ type: 'sawtooth', from: 600, to: 120, dur: 0.5, peak: 0.05 });
+      tone({ type: 'sine', from: 800, to: 200, dur: 0.5, peak: 0.06 });
+    }),
+    // Pistol pickup: a mechanical rack
+    gunGet: play(() => {
+      noise({ dur: 0.06, peak: 0.25, type: 'highpass', from: 2000 });
+      noise({ dur: 0.07, peak: 0.25, type: 'bandpass', from: 1200, q: 3, delay: 0.12 });
+      tone({ type: 'square', from: 220, to: 180, dur: 0.05, peak: 0.04, delay: 0.12 });
+    }),
+    // Shot: a sharp crack with a little low body
+    shoot: play(() => {
+      noise({ dur: 0.14, peak: 0.45, type: 'highpass', from: 1800, to: 600, q: 0.7 });
+      noise({ dur: 0.2, peak: 0.25, type: 'lowpass', from: 900, to: 150 });
+      tone({ type: 'triangle', from: 260, to: 70, dur: 0.15, peak: 0.12 });
+    }),
+    // Trigger on an empty pistol: a dry click
+    gunEmpty: play(() => noise({ dur: 0.03, peak: 0.2, type: 'highpass', from: 3000 })),
+    // Bullet hits rock: a small ping
+    bulletHit: play(() => {
+      tone({ type: 'triangle', from: 1800, to: 900, dur: 0.08, peak: 0.04 });
+      noise({ dur: 0.06, peak: 0.08, type: 'highpass', from: 2500 });
+    }),
     // CRASHED appears: a low, ominous swell
     deathSting: play(() => {
       tone({ type: 'sine', from: 98, to: 82, dur: 1.8, peak: 0.16, attack: 0.25 });

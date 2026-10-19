@@ -34,6 +34,10 @@
 //   - 2-3 "challenge" coins out in open air, away from pads and far from the goal, clear of rock,
 //     saws, crushers and drones
 //
+// fuels: fuel cells. { x, y } — 15 s of unlimited thrusting (stamina locked full)
+// guns: pistols. { x, y } — 3 bullets (picking up another refills to 3, never more);
+//   scroll the mouse wheel to fire one shot from the head; bullets destroy drones
+//
 // shields: gold shield pickups. { x, y }
 //   With a shield: touching any drone destroys it; if it was mid-dash the shield breaks too; touching rock or a saw bounces you off and uses the shield up.
 (function (root) {
@@ -243,6 +247,9 @@
         { x: 25, y: 14, angle: 30, power: 440 },
         { x: 70, y: 22, angle: -100, power: 520 },
       ],
+      guns: [{ x: 9, y: 33 }, { x: 47, y: 15 }],
+      fuels: [{ x: 22, y: 25 }],
+      enemies: [{ x: 40, y: 10 }, { x: 58, y: 9 }, { x: 70, y: 30 }],
       movers: [
         { shape: 'saw', r: 0.7, orbit: { x: 32, y: 10, radius: 3.5 }, speed: 60 },
         { shape: 'block', w: 2, h: 1, path: [[48, 36], [72, 36]], speed: 2 },
@@ -933,6 +940,20 @@
         { x: 132, y: 18 }, { x: 130, y: 28 }, { x: 136, y: 40 },
       ],
     },
+    {
+      // Practice: a tall empty shaft to try the fuel cell; the flag is far up
+      name: 'Sky Shaft',
+      practice: true,
+      map: buildMap(28, 90, (b) => {
+        b.pillar(10, 87, 8); b.set(13, 86, 'S');
+        b.ledge(3, 66, 5);
+        b.ledge(19, 46, 5);
+        b.ledge(4, 26, 5);
+        b.ledge(19, 9, 6);            // last rest stop, off to the side of the climb
+        b.set(14, 4, 'G');            // flag in open air straight up the middle
+      }),
+      fuels: [{ x: 14, y: 82 }, { x: 6, y: 62 }, { x: 21, y: 42 }, { x: 6, y: 22 }],
+    },
   ];
 
   // Campaign order = the difficulty curve. Sawtooth: each act teaches one idea, develops it,
@@ -957,7 +978,7 @@
     { title: 'Odyssey', about: 'One huge journey through everything',
       levels: ['Odyssey'] },
     { title: 'Practice', about: 'Open arena, not part of the campaign', practice: true,
-      levels: ['Test Ground'] },
+      levels: ['Test Ground', 'Sky Shaft'] },
   ];
   // Campaign order = the difficulty curve. Sawtooth: each act teaches one idea, develops it,
   // peaks on its last level, and the next act opens with an easier breather (docs/LEVEL_DESIGN.md).

@@ -105,6 +105,12 @@ for (const [i, def] of LEVELS.entries()) {
       }
     });
 
+    await t.test('fuel cells and pistols sit in open air', () => {
+      for (const it of [...world.fuels, ...world.guns]) {
+        assert.ok(!Core.circleHitsBlock(level, it.x, it.y, 14), `item at ${it.x / TILE},${it.y / TILE}`);
+      }
+    });
+
     await t.test('coins sit in open air and do not overlap the start', () => {
       for (const c of world.coins) {
         assert.ok(!Core.circleHitsBlock(level, c.x, c.y, 8), `coin at ${c.x / TILE},${c.y / TILE}`);
