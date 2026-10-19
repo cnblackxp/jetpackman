@@ -110,6 +110,11 @@ for (const [i, def] of LEVELS.entries()) {
         assert.ok(!Core.circleHitsBlock(level, c.x, c.y, 8), `coin at ${c.x / TILE},${c.y / TILE}`);
       }
       assert.ok(world.coins.length > 0, 'every level has coins');
+      // coins float: none sits right on top of a pad (you fly, you don't walk)
+      for (const c of world.coins) {
+        const col = Math.floor(c.x / TILE), below = Math.floor(c.y / TILE + 0.9);
+        assert.ok(!Core.isPad(level, col, below), `coin at ${c.x / TILE},${c.y / TILE} rests on a pad`);
+      }
     });
 
     await t.test('no drone can see the start pad from within range', () => {

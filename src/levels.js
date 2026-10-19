@@ -29,8 +29,10 @@
 //   dash `dash` tiles (default 6) toward you at `speed` px/s (default 380), then rest `recharge` s.
 //
 // coins: extra collectibles placed by hand. { x, y }
-//   Every level also gets coins automatically: one every other tile just above each landing pad
-//   (except the start pad), so they're always reachable and safe. See autoCoins() below.
+//   Every level also gets coins automatically (autoCoins below):
+//   - one per landing pad (not the start pad), floating ~2 tiles above its middle: a quick hop gets it
+//   - 2-3 "challenge" coins out in open air, away from pads and far from the goal, clear of rock,
+//     saws, crushers and drones
 //
 // shields: gold shield pickups. { x, y }
 //   With a shield: touching any drone destroys it; if it was mid-dash the shield breaks too; touching rock or a saw bounces you off and uses the shield up.
@@ -956,30 +958,116 @@
   // Campaign order = the difficulty curve. Sawtooth: each act teaches one idea, develops it,
   // peaks on its last level, and the next act opens with an easier breather (docs/LEVEL_DESIGN.md).
   const CAMPAIGN = ACTS.flatMap((a) => a.levels);
-  // A coin every other tile just above each pad run (not the start pad), where there's open air.
-  function autoCoins(map) {
-    const coins = [];
-    let start = null;
-    map.forEach((row, r) => { const c = row.indexOf('S'); if (c >= 0) start = { c, r }; });
+  // ---------- Automatic coins ----------
+  // You fly, you don't walk, so coins float in the air:
+  //  - pad coins: one per pad (not the start pad), ~2 tiles above its middle (one hop reaches it)
+  //  - challenge coins: open-air spots far from any pad and far from the goal (a detour that costs
+  //    stamina), at least a tile from rock and clear of saws, crushers and drones
+  function autoCoins(def) {
+    const map = def.map, rows = map.length, cols = map[0].length;
+    const tile = (c, r) => (r < 0 || c < 0 || r >= rows || c >= cols ? '#' : map[r][c]);
+    const open = (c, r) => '.SG'.includes(tile(c, r));
+    const isPad = (c, r) => tile(c, r) === '=' || tile(c, r) === 'C';
+    // a coin (radius ~0.4 tile) at (x, y) in tile units must not touch any rock or pad tile
+    const clear = (x, y, m = 0.45) => {
+      for (let r = Math.floor(y - m); r <= Math.floor(y + m); r++) {
+        for (let c = Math.floor(x - m); c <= Math.floor(x + m); c++) if (!open(c, r)) return false;
+      }
+      return true;
+    };
+
+    // Where hazards go: sample saws/crushers over their whole motion, plus drone homes
+    const hazards = [];
+    for (const m of def.movers || []) {
+      const reach = m.shape === 'block' ? Math.max(m.w || 1, m.h || 1) / 2 + 1.2 : (m.r || 0.6) + 1.2;
+      if (m.orbit) {
+        for (let a = 0; a < 360; a += 10) {
+          const t = (a * Math.PI) / 180;
+          hazards.push({ x: m.orbit.x + Math.cos(t) * m.orbit.radius, y: m.orbit.y + Math.sin(t) * m.orbit.radius, reach });
+        }
+      } else {
+        const pts = m.path;
+        for (let i = 0; i < pts.length; i++) {
+          const [x0, y0] = pts[i], [x1, y1] = pts[Math.min(i + 1, pts.length - 1)];
+          for (let k = 0; k <= 10; k++) hazards.push({ x: x0 + ((x1 - x0) * k) / 10, y: y0 + ((y1 - y0) * k) / 10, reach });
+        }
+      }
+    }
+    for (const e of def.enemies || []) hazards.push({ x: e.x, y: e.y, reach: 3.5 });
+    const safe = (x, y) => hazards.every((h) => Math.hypot(x - h.x, y - h.y) > h.reach);
+
+    let start = null, goal = null;
     map.forEach((row, r) => {
-      for (let c = 0; c < row.length; c++) {
-        const pad = (x) => row[x] === '=' || row[x] === 'C';
-        if (!pad(c) || pad(c - 1)) continue;
+      for (let c = 0; c < cols; c++) {
+        if (row[c] === 'S') start = { c, r };
+        if (row[c] === 'G' && !goal) goal = { c, r };
+      }
+    });
+
+    const coins = [];
+    const padTops = [];
+    // pad coins
+    map.forEach((row, r) => {
+      for (let c = 0; c < cols; c++) {
+        if (!isPad(c, r) || isPad(c - 1, r)) continue;
         let end = c;
-        while (pad(end + 1)) end++;
+        while (isPad(end + 1, r)) end++;
+        for (let x = c; x <= end; x++) padTops.push({ x: x + 0.5, y: r - 0.5 });
         const isStart = start && start.r === r - 1 && start.c >= c && start.c <= end;
-        if (!isStart && r > 0) {
-          for (let x = c + ((end - c) % 2 ? 0.5 : 0); x <= end; x += 2) {
-            const col = Math.floor(x);
-            if (map[r - 1][col] === '.' || map[r - 1][col] === 'G') coins.push({ x: x + 0.5, y: r - 0.5 });
+        const x = (c + end + 1) / 2;
+        const byGoal = goal && Math.hypot(x - (goal.c + 0.5), r - 1 - (goal.r + 0.5)) < 3; // pointless there
+        if (!isStart && !byGoal) {
+          for (const lift of [2.2, 1.8, 1.4]) {
+            const y = r - lift;
+            if (clear(x, y) && safe(x, y)) { coins.push({ x, y }); break; }
           }
         }
         c = end;
       }
     });
-    return coins;
+
+    // distance (in steps) from the goal through open tiles: far = a detour
+    const dist = new Map();
+    const key = (c, r) => r * cols + c;
+    if (goal) {
+      const q = [[goal.c, goal.r]];
+      dist.set(key(goal.c, goal.r), 0);
+      while (q.length) {
+        const [c, r] = q.shift();
+        for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nc = c + dc, nr = r + dr;
+          if (!open(nc, nr) || dist.has(key(nc, nr))) continue;
+          dist.set(key(nc, nr), dist.get(key(c, r)) + 1);
+          q.push([nc, nr]);
+        }
+      }
+    }
+
+    // challenge coins
+    const candidates = [];
+    for (let r = 1; r < rows - 1; r++) {
+      for (let c = 1; c < cols - 1; c++) {
+        const x = c + 0.5, y = r + 0.5;
+        if (!dist.has(key(c, r)) || !clear(x, y, 1.2) || !safe(x, y)) continue;
+        if (!open(c, r + 1) || !open(c, r + 2) || !open(c, r + 3)) continue; // keep well off the floor
+        if (start && Math.hypot(c - start.c, r - start.r) < 6) continue;
+        if (goal && Math.hypot(c - goal.c, r - goal.r) < 4) continue;
+        const toPad = padTops.reduce((m, t) => Math.min(m, Math.hypot(x - t.x, y - t.y)), Infinity);
+        if (toPad < 3.5 || toPad > 7) continue; // a real detour, but still within a few thrusts
+        candidates.push({ x, y, score: toPad + dist.get(key(c, r)) * 0.15 });
+      }
+    }
+    candidates.sort((a, b) => b.score - a.score);
+    const want = rows * cols > 1500 ? 3 : 2;
+    const picked = [];
+    for (const cand of candidates) {
+      if (picked.length >= want) break;
+      if ([...picked, ...coins].some((o) => Math.hypot(o.x - cand.x, o.y - cand.y) < 8)) continue;
+      picked.push({ x: cand.x, y: cand.y });
+    }
+    return [...coins, ...picked];
   }
-  for (const d of DEFS) d.coins = [...autoCoins(d.map), ...(d.coins || [])];
+  for (const d of DEFS) d.coins = [...autoCoins(d), ...(d.coins || [])];
 
   const byName = new Map(DEFS.map((d) => [d.name, d]));
   const LEVELS = CAMPAIGN.map((name) => {

@@ -148,8 +148,10 @@ Navigation always goes through `navigate(hash)` so history works. A level loads 
 
 ## Coins and effects
 
-- **Coins** (`world.coins`, collected in `touchActors` → `coin` event). Every level gets coins above its
-  pads automatically (`autoCoins` in levels.js) plus any listed by hand. A respawn at a checkpoint keeps
+- **Coins** (`world.coins`, collected in `touchActors` → `coin` event). `autoCoins` (levels.js) floats one
+  coin ~2 tiles above the middle of each pad (not the start pad or next to the goal) and adds 2-3
+  challenge coins in open air 3.5-7 tiles from any pad and far from the goal, clear of rock (1.2 tiles,
+  3 tiles of air below), saws, crushers and drones. Levels can add more by hand. A respawn at a checkpoint keeps
   collected coins (`resetActors(world, true)`); a full restart resets them. The HUD shows `◆ got/total`;
   the most coins of a finished run per level are saved in `jetpackman.coins.v1` (`recordCoins`).
 - **Deaths carry a cause** (`'rock' | 'saw' | 'crusher' | 'enemy'`); `die(cause)` in game.js picks the
