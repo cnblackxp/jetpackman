@@ -464,22 +464,24 @@
   // Fuel cell (glowing canister) and pistol pickups
   function drawItems(t) {
     const g = pickupG;
+    const S = 1.6; // drawn bigger than the original sketch so they read at a glance
     for (const f of state.world.fuels) {
       if (f.taken) continue;
-      const y = f.y + Math.sin(t * 3 + f.x) * 4;
-      g.lineStyle(0).beginFill(0x7fdcff, 0.15 + Math.sin(t * 5) * 0.05).drawCircle(f.x, y, 20).endFill();
-      g.beginFill(0x1d3a52).drawRoundedRect(f.x - 7, y - 11, 14, 22, 4).endFill();
-      g.beginFill(0x7fdcff).drawRoundedRect(f.x - 5, y - 9 + (1 - (Math.sin(t * 2) * 0.5 + 0.5)) * 6, 10, 18 - (1 - (Math.sin(t * 2) * 0.5 + 0.5)) * 6, 3).endFill();
-      g.beginFill(0xdff6ff).drawPolygon([f.x + 1, y - 7, f.x - 3, y + 1, f.x, y + 1, f.x - 1, y + 7, f.x + 3, y - 1, f.x, y - 1]).endFill();
-      g.beginFill(0x9aa3b5).drawRect(f.x - 3, y - 14, 6, 3).endFill();
+      const x = f.x, y = f.y + Math.sin(t * 3 + f.x) * 4;
+      const fill = (1 - (Math.sin(t * 2) * 0.5 + 0.5)) * 6;
+      g.lineStyle(0).beginFill(0x7fdcff, 0.15 + Math.sin(t * 5) * 0.05).drawCircle(x, y, 20 * S).endFill();
+      g.beginFill(0x1d3a52).drawRoundedRect(x - 7 * S, y - 11 * S, 14 * S, 22 * S, 4 * S).endFill();
+      g.beginFill(0x7fdcff).drawRoundedRect(x - 5 * S, y + (-9 + fill) * S, 10 * S, (18 - fill) * S, 3 * S).endFill();
+      g.beginFill(0xdff6ff).drawPolygon([1, -7, -3, 1, 0, 1, -1, 7, 3, -1, 0, -1].map((v, i) => (i % 2 ? y : x) + v * S)).endFill();
+      g.beginFill(0x9aa3b5).drawRect(x - 3 * S, y - 14 * S, 6 * S, 3 * S).endFill();
     }
     for (const gn of state.world.guns) {
       if (gn.taken) continue;
-      const y = gn.y + Math.sin(t * 3 + gn.x) * 4;
-      g.lineStyle(2, 0xd9a441, 0.8).beginFill(0x2a2210, 0.6).drawCircle(gn.x, y, 17).endFill();
-      g.lineStyle(0).beginFill(0x4a5163).drawRoundedRect(gn.x - 10, y - 6, 18, 6, 1.5).endFill();
-      g.beginFill(0x2b2f3a).drawRoundedRect(gn.x - 8, y - 1, 6, 9, 1.5).endFill();
-      g.beginFill(0x9aa3b5).drawRect(gn.x + 6, y - 6, 2, 3).endFill();
+      const x = gn.x, y = gn.y + Math.sin(t * 3 + gn.x) * 4;
+      g.lineStyle(2.5, 0xd9a441, 0.8).beginFill(0x2a2210, 0.6).drawCircle(x, y, 17 * S).endFill();
+      g.lineStyle(0).beginFill(0x4a5163).drawRoundedRect(x - 10 * S, y - 6 * S, 18 * S, 6 * S, 1.5 * S).endFill();
+      g.beginFill(0x2b2f3a).drawRoundedRect(x - 8 * S, y - 1 * S, 6 * S, 9 * S, 1.5 * S).endFill();
+      g.beginFill(0x9aa3b5).drawRect(x + 6 * S, y - 6 * S, 2 * S, 3 * S).endFill();
     }
   }
 
@@ -488,8 +490,9 @@
     g.clear();
     for (const b of state.world.bullets) {
       const sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp;
-      g.lineStyle(3, 0xffe066, 0.35).moveTo(b.x - ux * 22, b.y - uy * 22).lineTo(b.x, b.y);
-      g.lineStyle(0).beginFill(0xfff3c4).drawCircle(b.x, b.y, 3).endFill();
+      g.lineStyle(8, 0xffe066, 0.3).moveTo(b.x - ux * 40, b.y - uy * 40).lineTo(b.x, b.y);
+      g.lineStyle(0).beginFill(0xffe066, 0.35).drawCircle(b.x, b.y, CFG.bulletRadius).endFill(); // hit size
+      g.beginFill(0xfff3c4).drawCircle(b.x, b.y, 7).endFill();
     }
   }
 

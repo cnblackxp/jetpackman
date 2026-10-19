@@ -41,11 +41,12 @@
     // Shield item
     shieldPickupRadius: 18, // px
     coinRadius: 12,        // px: coins are collected when the player's circle touches this
-    itemRadius: 16,        // px: fuel cell / pistol pickups
+    itemRadius: 26,        // px: fuel cell / pistol pickups
     fuelDuration: 15,      // s of free thrusting from a fuel cell (stamina locked full)
     gunAmmo: 3,            // bullets per pistol; picking up another refills to this, never more
     bulletSpeed: 900,      // px/s
     bulletLife: 1.2,       // s before a bullet fizzles
+    bulletRadius: 14,      // px: generous hit size vs drones (aiming while flying is hard)
     shieldInvuln: 0.5,     // s of safety after the shield saves you
     bounceRestitution: 0.8,// share of speed kept when bouncing off rock
     bounceMinSpeed: 220,   // px/s: a bounce always pushes you away at least this fast
@@ -571,7 +572,7 @@
         b.x += (b.vx * dt) / steps;
         b.y += (b.vy * dt) / steps;
         if (circleHitsBlock(world.level, b.x, b.y, 3)) { events.push({ type: 'bulletHit', x: b.x, y: b.y }); return false; }
-        const e = world.enemies.find((en) => en.alive && Math.hypot(b.x - en.x, b.y - en.y) < en.r + 4);
+        const e = world.enemies.find((en) => en.alive && Math.hypot(b.x - en.x, b.y - en.y) < en.r + cfg.bulletRadius);
         if (e) {
           e.alive = false;
           events.push({ type: 'enemyKilled', enemy: e, byBullet: true });
