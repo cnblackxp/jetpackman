@@ -21,7 +21,7 @@ npm install          # also copies PixiJS into vendor/ so the game works offline
 
 | Command | What it does |
 | --- | --- |
-| `npm start` | Serves the game at http://localhost:8123 (needs Python) |
+| `npm start` | Serves the game at http://localhost:8123, with the level editor at `#/editor` (docs/LEVEL_EDITOR.md) |
 | `npm test` | Unit tests for game rules + checks on every level |
 | `npm run desktop` | Runs the game in NW.js from source (downloads NW.js on first run) |
 | `npm run package` | Builds the Windows desktop version and zips it |

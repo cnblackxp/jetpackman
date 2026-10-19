@@ -9,6 +9,7 @@ touching rock kills, green pads are safe.
 - `docs/ARCHITECTURE.md`: how the code works (core vs. game, frame loop, rules, rendering, routing)
 - `docs/LEVEL_DESIGN.md`: map format, objects, reach numbers, design guidelines, sketch legend
 - `docs/WORKFLOW.md`: commands, the user's standing rules, devlog procedure, packaging
+- `docs/LEVEL_EDITOR.md`: the level editor, where it saves (`src/levels-custom.js`), research notes
 - `docs/PLAYTESTING.md`: how to actually play a level (input bot) and what playing taught us
 
 ## Key rules

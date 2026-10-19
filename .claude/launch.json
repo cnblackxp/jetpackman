@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "jetpackman",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8123"],
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/dev-server.js"],
       "port": 8123
     }
   ]

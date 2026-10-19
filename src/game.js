@@ -239,6 +239,9 @@
     checkpointSave: null, // Core.snapshotActors(...) taken when you last landed on a checkpoint
     paused: false,    // left with Esc: the level waits, frozen, behind the menus
     forceRestart: false, // the next #/level/N route starts fresh instead of resuming
+    editorTest: false,   // playing a level from the editor (Esc and winning go back to it)
+    testDef: null,       // that level, and where to start it (null: its start)
+    testSpawn: null,
     toast: { text: '', time: 0 }, // short message over the HUD
     cam: { x: 0, y: 0 },
     look: { x: 0, y: 0 }, // camera lead in the direction of travel
@@ -258,9 +261,13 @@
   let coinCombo = 0, lastCoinAt = -10;
   const squash = { x: 1, y: 1 }; // player squash & stretch (eases back to 1)
 
-  function loadLevel(i) {
-    state.levelIndex = i;
-    state.world = Core.createWorld(LEVELS[i], CFG);
+  // The level being played: a campaign level, or the one sent over from the editor
+  const currentDef = () => (state.editorTest ? state.testDef : LEVELS[state.levelIndex]);
+
+  function loadLevel(i, testDef = null) {
+    if (!testDef) state.levelIndex = i;
+    state.editorTest = !!testDef;
+    state.world = Core.createWorld(testDef || LEVELS[i], CFG);
     state.deaths = 0;
     state.checkpoint = null;
     state.checkpointSave = null;
@@ -274,6 +281,10 @@
     drawTerrain();
     buildMoverGraphics();
     buildSigns();
+    if (testDef && state.testSpawn) { // editor's "play from here": spawn there as if at a checkpoint
+      state.checkpoint = { ...state.testSpawn };
+      state.checkpointSave = Core.snapshotActors(state.world, Core.createPlayer(state.world.level, CFG));
+    }
     resetPlayer();
     state.cam.x = state.p.x;
     state.cam.y = state.p.y;
@@ -796,6 +807,14 @@
   }
 
   function win() {
+    if (state.editorTest) { // a test run: nothing is recorded
+      state.mode = 'done';
+      const { x, y } = state.world.level.goal;
+      radialBurst(x, y, 50, [0x3dff9a, 0xdfe6ff, 0xffe066], 260, 200, 1.4);
+      state.slowmo = 0.5;
+      Sfx.win();
+      return;
+    }
     const next = Core.nextLevelAfter(LEVELS, state.levelIndex);
     state.mode = next == null ? 'done' : 'won';
     const name = LEVELS[state.levelIndex].name;
@@ -963,7 +982,7 @@
     } else if (state.mode === 'dead' && state.deathTime >= DEATH_FADE) {
       resetPlayer(); // back to the last checkpoint, or the start
     } else if (state.mode === 'done' && e.button === 0) {
-      navigate('#/levels');
+      navigate(state.editorTest ? '#/editor' : '#/levels');
     }
   });
 
@@ -983,6 +1002,8 @@
       setFullscreen(!isFullscreen());
       return;
     }
+    if (state.screen === 'editor') return; // the editor has its own keys
+    if (e.key === 'Escape' && state.screen === 'game' && state.editorTest) { navigate('#/editor'); return; }
     if (e.key === 'Escape') {
       if (state.screen === 'game' && (state.mode === 'play' || state.mode === 'dead')) {
         state.paused = true; // keep the level as it is
@@ -993,7 +1014,7 @@
     }
     if (state.screen !== 'game') return;
     const n = parseInt(e.key, 10);
-    if (n >= 1 && n <= LEVELS.length) { navigate(Core.levelHash(n - 1)); return; }
+    if (!state.editorTest && n >= 1 && n <= LEVELS.length) { navigate(Core.levelHash(n - 1)); return; }
     if ((e.key === 'r' || e.key === 'R') && (state.mode === 'play' || state.mode === 'dead')) resetPlayer(true);
   });
 
@@ -1097,10 +1118,11 @@
 
   function updateHud() {
     if (state.screen !== 'game') return;
-    const lvl = LEVELS[state.levelIndex];
-    hudText.text = `${lvl.practice ? 'Practice' : `Level ${state.levelIndex + 1}`}: ${lvl.name}` +
+    const lvl = currentDef();
+    const label = state.editorTest ? 'Editor test' : lvl.practice ? 'Practice' : `Level ${state.levelIndex + 1}`;
+    hudText.text = `${label}: ${lvl.name}` +
       `    Time ${state.levelTime.toFixed(1)}s    Deaths ${state.deaths}    ◆ ${state.coins}/${state.world.coins.length}` +
-      `    [R] restart  [Esc] menu`;
+      `    [R] restart  [Esc] ${state.editorTest ? 'back to the editor' : 'menu'}`;
     msgText.position.set(app.screen.width / 2, app.screen.height * 0.16);
     versionText.position.set(app.screen.width - 14, 14);
     state.toast.time = Math.max(0, state.toast.time - app.ticker.deltaMS / 1000);
@@ -1112,6 +1134,8 @@
       msgText.text = '';
     } else if (state.mode === 'won') {
       msgText.text = `Level complete in ${state.levelTime.toFixed(1)}s!  ◆ ${state.coins}/${state.world.coins.length}\nClick for the next level`;
+    } else if (state.mode === 'done' && state.editorTest) {
+      msgText.text = `Reached the goal in ${state.levelTime.toFixed(1)}s!\nClick to go back to the editor`;
     } else if (state.mode === 'done') {
       msgText.text = lvl.practice
         ? `Reached the goal in ${state.levelTime.toFixed(1)}s!\nClick for level select`
@@ -1136,6 +1160,7 @@
   function showScreen(name) {
     state.screen = name;
     for (const [key, el] of Object.entries(screens)) el.classList.toggle('active', key === name);
+    if (editor) { if (name === 'editor') editor.open(); else editor.close(); }
     const inGame = name === 'game';
     document.body.classList.toggle('in-game', inGame);
     hud.visible = inGame;
@@ -1282,7 +1307,25 @@
   function route() {
     const r = Core.parseRoute(location.hash, LEVELS.length);
     if (r.redirect) history.replaceState(null, '', r.redirect);
-    if (r.screen === 'game') {
+    if (r.screen === 'editor' || (r.screen === 'game' && r.test)) {
+      if (editorReady === 'pending') return; // routed again once we know whether saving works here
+      if (editorReady === 'off') { history.replaceState(null, '', '#/menu'); route(); return; }
+      if (r.test && !state.testDef) { history.replaceState(null, '', '#/editor'); route(); return; }
+    }
+    if (r.screen === 'game' && r.test) {
+      loadLevel(state.levelIndex, state.testDef);
+    } else if (r.screen === 'editor') {
+      if (!state.world) loadLevel(0); // a calm backdrop for when you leave
+      if (!editor) {
+        editor = LevelEditor.createEditor({
+          Core, LEVELS, CustomIO, el: document.getElementById('editor'),
+          onPlay(def, spawn) { state.testDef = def; state.testSpawn = spawn; navigate('#/editor/test'); },
+          onExit(reload) {
+            if (reload) { location.hash = '#/levels'; location.reload(); } else navigate('#/menu');
+          },
+        });
+      }
+    } else if (r.screen === 'game') {
       if (state.paused && r.level === state.levelIndex && !state.forceRestart) state.paused = false; // resume
       else loadLevel(r.level);
       state.forceRestart = false;
@@ -1294,6 +1337,18 @@
       if (r.screen === 'options') buildOptions();
     }
     showScreen(r.screen);
+  }
+
+  // The level editor needs somewhere to save: the dev server (npm start) or the desktop build.
+  // On a static host (GitHub Pages) it stays hidden and #/editor goes to the menu.
+  let editor = null;
+  let editorReady = typeof LevelEditor === 'undefined' ? 'off' : 'pending';
+  if (editorReady === 'pending') {
+    LevelEditor.detectBackend().then((b) => {
+      editorReady = b ? 'on' : 'off';
+      document.getElementById('editorBtn').hidden = !b;
+      if (/^#\/editor/.test(location.hash)) route();
+    });
   }
 
   // Picking a level (Play, Level Select, Tutorial, Test Ground) always starts it fresh;

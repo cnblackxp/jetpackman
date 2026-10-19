@@ -6,7 +6,7 @@ How work on this project is done, including the user's standing preferences.
 
 ```bash
 npm install             # deps + copies PixiJS into vendor/
-npm start               # http://localhost:8123 (python http.server)
+npm start               # http://localhost:8123 (scripts/dev-server.js); level editor at #/editor
 npm test                # unit + level tests (node --test, no deps)
 npm run desktop         # run from source in NW.js
 npm run package         # Windows build -> dist/JetpackMan-<ver>-win-x64-<date>_<time>.zip

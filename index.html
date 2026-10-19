@@ -129,6 +129,83 @@
     body.in-game .version-tag { display: none; } /* the HUD shows it while playing */
     .version-tag b { color: #ffc93d; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
     .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+    /* ---------- Level editor ---------- */
+    .editor { position: fixed; inset: 0; z-index: 20; display: none; flex-direction: column; background: var(--bg);
+      color: var(--text); font-size: 14px; user-select: none; }
+    .editor.active { display: flex; }
+    .editor kbd { display: inline-block; min-width: 14px; padding: 0 4px; border: 1px solid #4a5384; border-bottom-width: 2px;
+      border-radius: 4px; background: #1a1e33; color: var(--muted); font: 11px/16px inherit; text-align: center; }
+    .ed-top { display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: #141831; border-bottom: 1px solid #2c3360; }
+    .ed-title { flex: 1; display: flex; align-items: baseline; gap: 10px; padding: 0 10px; min-width: 0; }
+    .ed-name { font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ed-status { color: var(--muted); font-size: 13px; white-space: nowrap; }
+    .ed-status.warn { color: #ffc93d; }
+    .ed-btn { padding: 6px 12px; border: 1px solid #4a5384; border-radius: 7px; background: #232848; color: var(--text);
+      font: inherit; cursor: pointer; white-space: nowrap; }
+    .ed-btn:hover:not(:disabled) { background: var(--panel-hover); border-color: var(--line-hover); }
+    .ed-btn:disabled { opacity: 0.4; cursor: default; }
+    .ed-btn.primary { background: #1a6b4c; border-color: #3dff9a; }
+    .ed-btn.primary:hover { background: #1f7353; }
+    .ed-btn.danger { border-color: #a8455a; color: #ffb3c1; }
+    .ed-btn.icon { width: 34px; padding: 6px 0; font-size: 16px; }
+    .ed-btn.small { padding: 3px 8px; font-size: 12px; }
+    .ed-main { flex: 1; display: flex; min-height: 0; }
+    .ed-left, .ed-right { width: 200px; flex: none; overflow-y: auto; background: #12162c; padding: 8px; }
+    .ed-left { border-right: 1px solid #2c3360; }
+    .ed-right { width: 270px; border-left: 1px solid #2c3360; }
+    .ed-group { margin: 10px 2px 6px; color: var(--muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .ed-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .ed-tool { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border: 1px solid #2f365f;
+      border-radius: 6px; background: #1a1e36; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+    .ed-palette { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .ed-item { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 2px 5px;
+      border: 1px solid #2f365f; border-radius: 6px; background: #1a1e36; color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
+    .ed-item canvas { width: 34px; height: 34px; }
+    .ed-item kbd { position: absolute; top: 3px; right: 3px; }
+    .ed-tool:hover, .ed-item:hover { border-color: var(--line-hover); }
+    .ed-tool.active, .ed-item.active { border-color: #7fdcff; background: #233a5a; box-shadow: 0 0 0 1px #7fdcff inset; }
+    .ed-stage { position: relative; flex: 1; min-width: 0; }
+    .ed-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
+    .ed-banner { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); padding: 8px 12px; border: 1px solid #ffc93d;
+      border-radius: 8px; background: #2a2414; color: #ffe8a8; display: flex; gap: 8px; align-items: center; }
+    .ed-banner[hidden], .ed-toast[hidden], .ed-modal[hidden] { display: none; }
+    .ed-toast { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); max-width: 80%; padding: 8px 14px;
+      border-radius: 8px; background: rgba(20, 24, 49, 0.95); border: 1px solid #4a5384; pointer-events: none; }
+    .ed-card { margin-bottom: 10px; padding: 8px 10px 10px; border: 1px solid #2c3360; border-radius: 8px; background: #161a33; }
+    .ed-card h4 { margin: 0 0 8px; font-size: 13px; color: #a9b4ff; display: flex; justify-content: space-between; gap: 6px; }
+    .ed-issue-count { color: var(--muted); font-weight: 400; }
+    .ed-field { display: flex; flex-direction: column; gap: 3px; margin-bottom: 7px; font-size: 12px; color: var(--muted); }
+    .ed-field input, .ed-field textarea { padding: 5px 7px; border: 1px solid #3a4378; border-radius: 5px; background: #0f1226;
+      color: var(--text); font: inherit; font-size: 13px; user-select: text; }
+    .ed-field textarea { min-height: 54px; resize: vertical; }
+    .ed-field input:disabled { opacity: 0.6; }
+    .ed-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .ed-row.end { justify-content: flex-end; }
+    .ed-muted { color: var(--muted); font-size: 12px; margin: 4px 0; line-height: 1.4; }
+    .ed-ok { color: #3dff9a; font-size: 13px; margin: 2px 0; }
+    .ed-issue { display: block; width: 100%; margin-bottom: 4px; padding: 5px 7px; border: 1px solid #3a4378; border-radius: 5px;
+      background: #1a1e36; color: var(--text); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+    .ed-issue.error { border-color: #a8455a; color: #ffb3c1; }
+    .ed-issue.warning { border-color: #8a6d2a; color: #ffe08a; }
+    .ed-grid4 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 6px 0; text-align: center; font-size: 11px; color: var(--muted); }
+    .ed-grid4 .ed-btn { margin: 1px; }
+    .ed-bottom { display: flex; justify-content: space-between; gap: 16px; padding: 5px 12px; background: #141831;
+      border-top: 1px solid #2c3360; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; }
+    .ed-modal { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(5, 7, 15, 0.6); }
+    .ed-dialog { width: min(560px, 92vw); max-height: 86vh; display: flex; flex-direction: column; padding: 16px 18px;
+      border: 1px solid #4a5384; border-radius: 12px; background: #161a33; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
+    .ed-dialog h3 { margin: 0 0 12px; }
+    .ed-search { padding: 8px 10px; margin-bottom: 8px; border: 1px solid #3a4378; border-radius: 6px; background: #0f1226;
+      color: var(--text); font: inherit; user-select: text; }
+    .ed-list { overflow-y: auto; min-height: 120px; }
+    .ed-level { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+    .ed-level-open { flex: 1; display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px; border: 1px solid #2f365f;
+      border-radius: 6px; background: #1a1e36; color: var(--text); font: inherit; cursor: pointer; text-align: left; }
+    .ed-level-open:hover { border-color: var(--line-hover); background: var(--panel-hover); }
+    .ed-level-open small { color: var(--muted); }
+    .ed-help { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; font-size: 13px; }
+    @media (max-width: 900px) { .ed-left { width: 150px; } .ed-right { width: 210px; } .ed-btn { padding: 6px 8px; } }
   </style>
 </head>
 <body>
@@ -142,6 +219,7 @@
       <a class="btn" id="tutorialBtn" href="#/level/1">Tutorial</a>
       <a class="btn" href="#/levels">Level Select</a>
       <a class="btn" id="testBtn" href="#/level/1">Test Ground</a>
+      <a class="btn" id="editorBtn" href="#/editor" hidden>Level Editor</a>
       <a class="btn" href="#/options">Options</a>
       <a class="btn desktop-only" id="quitBtn" href="#/menu">Quit</a>
     </nav>
@@ -207,11 +285,15 @@
   </section>
 
   <!-- Local copy (npm install puts it in vendor/) so the desktop build works offline; CDN as a fallback -->
+  <div id="editor" class="editor"></div>
   <script src="vendor/pixi.min.js"></script>
   <script>window.PIXI || document.write('<script src="https://cdn.jsdelivr.net/npm/pixi.js@7.4.2/dist/pixi.min.js"><\/script>');</script>
   <script src="src/core.js"></script>
+  <script src="src/custom-io.js"></script>
+  <script src="src/levels-custom.js"></script>
   <script src="src/levels.js"></script>
   <script src="src/audio.js"></script>
+  <script src="src/editor.js"></script>
   <script src="src/game.js"></script>
 </body>
 </html>

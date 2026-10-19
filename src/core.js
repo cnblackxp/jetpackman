@@ -705,6 +705,7 @@
   function parseRoute(hash, levelCount) {
     const [screen, arg] = String(hash || '').replace(/^#\/?/, '').split('/');
     if (screen === 'menu' || screen === 'levels' || screen === 'options') return { screen };
+    if (screen === 'editor') return arg === 'test' ? { screen: 'game', test: true } : { screen: 'editor' };
     if (screen === 'level') {
       const n = Number(arg);
       if (Number.isInteger(n) && n >= 1 && n <= levelCount) return { screen: 'game', level: n - 1 };
@@ -745,6 +746,86 @@
     return out;
   }
 
+  // ---------- Level checks (used by the level editor; tests/levels.test.js checks the same rules) ----------
+  // Returns [{ severity: 'error' | 'warning', message, x, y }] (x, y in tiles, where to look).
+  // Errors make a level unplayable (the editor saves it as a draft); warnings are unfair spots.
+  function validateLevel(def, cfg = DEFAULT_TUNING) {
+    const out = [];
+    const err = (message, x, y) => out.push({ severity: 'error', message, x, y });
+    const warn = (message, x, y) => out.push({ severity: 'warning', message, x, y });
+    let world;
+    try {
+      world = createWorld(def, cfg);
+    } catch (e) {
+      err(String(e.message).replace(/^Level "[^"]*" /, 'The level '));
+      return out;
+    }
+    const { level } = world;
+    const T = TILE;
+    for (let c = 0; c < level.cols; c++) {
+      if (!isBlock(level, c, 0) || !isBlock(level, c, level.rows - 1)) { err('The top and bottom edges must be rock', c + 0.5, 0.5); break; }
+    }
+    for (let r = 0; r < level.rows; r++) {
+      if (!isBlock(level, 0, r) || !isBlock(level, level.cols - 1, r)) { err('The left and right edges must be rock', 0.5, r + 0.5); break; }
+    }
+    const sx = level.start.col + 0.5, sy = level.start.row + 0.5;
+    if (!isPad(level, level.start.col, level.start.row + 1)) err('The start (S) must stand on a pad', sx, sy);
+    // can you get from the start to the goal through open tiles at all?
+    const goalC = Math.floor(level.goal.x / T), goalR = Math.floor(level.goal.y / T);
+    const seen = new Set([level.start.row * level.cols + level.start.col]);
+    const queue = [[level.start.col, level.start.row]];
+    let found = false;
+    while (queue.length && !found) {
+      const [c, r] = queue.shift();
+      if (c === goalC && r === goalR) found = true;
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nc = c + dc, nr = r + dr, k = nr * level.cols + nc;
+        if (isBlock(level, nc, nr) || seen.has(k)) continue;
+        seen.add(k);
+        queue.push([nc, nr]);
+      }
+    }
+    if (!found) err('The goal (G) is walled off from the start', level.goal.x / T, level.goal.y / T);
+    if (circleHitsSolid(level, level.goal.x, level.goal.y, cfg.radius)) err('The goal is too close to rock to reach', level.goal.x / T, level.goal.y / T);
+    // a straight hop from the start must not hit a ceiling
+    for (let r = level.start.row - 1; r >= level.start.row - 3 && r >= 0; r--) {
+      if (isBlock(level, level.start.col, r)) { warn('Low ceiling right above the start', sx, r + 0.5); break; }
+    }
+    // movers: never inside rock, never touching the start
+    for (let t = 0; t < 20; t += 0.1) {
+      updateMovers(world, t);
+      const bad = world.movers.find((m) => isBlock(level, Math.floor(m.x / T), Math.floor(m.y / T)));
+      if (bad) { warn('A saw or crusher passes through rock', bad.x / T, bad.y / T); break; }
+    }
+    for (let t = 0; t < 20; t += 0.1) {
+      updateMovers(world, t);
+      if (hitsMover(world.movers, level.start.x, level.start.y, cfg.radius + 20)) { warn('A saw or crusher reaches the start', sx, sy); break; }
+    }
+    for (const e of world.enemies) {
+      if (circleHitsBlock(level, e.homeX, e.homeY, e.r + 2)) warn('A drone is stuck in rock', e.homeX / T, e.homeY / T);
+      const d = Math.hypot(level.start.x - e.homeX, level.start.y - e.homeY);
+      if (d < e.range + 2 * T && lineOfSight(level, e.homeX, e.homeY, level.start.x, level.start.y)) {
+        warn('A drone can see the start: it attacks right away', e.homeX / T, e.homeY / T);
+      }
+      for (const cp of level.checkpoints) {
+        let watches = false;
+        for (let k = 0; k < cp.width && !watches; k++) {
+          const x = (cp.col + k + 0.5) * T, y = cp.y - cfg.standOffset;
+          watches = Math.hypot(x - e.homeX, y - e.homeY) < e.range + T && lineOfSight(level, e.homeX, e.homeY, x, y);
+        }
+        if (watches) warn('A drone watches a checkpoint (a respawn trap)', e.homeX / T, e.homeY / T);
+      }
+    }
+    for (const [list, label, rad] of [[world.shields, 'A shield', 14], [world.fuels, 'A fuel cell', 14], [world.guns, 'A pistol', 14], [world.coins, 'A coin', 8]]) {
+      for (const it of list) if (circleHitsBlock(level, it.x, it.y, rad)) warn(`${label} is stuck in rock`, it.x / T, it.y / T);
+    }
+    for (const b of world.pushers) {
+      if (circleHitsSolid(level, b.x, b.y, b.r * 0.5)) warn('A pusher is buried in rock', b.x / T, b.y / T);
+    }
+    for (const s of world.signs) if (!s.text) warn('A sign has no text', s.x / T, s.y / T);
+    return out;
+  }
+
   // ---------- Settings ----------
   const DEFAULT_SETTINGS = Object.freeze({
     volume: 0.6, muted: false, screenShake: true, aimLine: false,
@@ -771,6 +852,7 @@
     parseLevel, createWorld, tileAt, isSolid, isPad, isCheckpoint, isBlock,
     circleHitsSolid, circleHitsBlock, hitsMover, lineOfSight, bounceOffRock, resolvePads,
     updateEnemies, resetActors, snapshotActors, restoreActors, fire, updateBullets,
+    validateLevel,
     moverPosition, updateMovers, hitsMover, checkPushers,
     createPlayer, thrustDirection, tryThrust, updateStamina, refillOnLanding, stepPlayer,
     parseRoute, levelHash,

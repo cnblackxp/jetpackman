@@ -115,7 +115,7 @@ for (const [i, def] of LEVELS.entries()) {
       for (const c of world.coins) {
         assert.ok(!Core.circleHitsBlock(level, c.x, c.y, 8), `coin at ${c.x / TILE},${c.y / TILE}`);
       }
-      assert.ok(world.coins.length > 0, 'every level has coins');
+      if (!def.custom) assert.ok(world.coins.length > 0, 'every built-in level has coins'); // editor levels may skip them
       // coins float: none sits right on top of a pad (you fly, you don't walk)
       for (const c of world.coins) {
         const col = Math.floor(c.x / TILE), below = Math.floor(c.y / TILE + 0.9);
@@ -149,3 +149,11 @@ for (const [i, def] of LEVELS.entries()) {
     });
   });
 }
+
+test('every built-in level passes the level editor checks (Core.validateLevel)', () => {
+  // custom levels may keep warnings (their author's call); drafts with errors never reach LEVELS
+  for (const def of LEVELS) {
+    const found = Core.validateLevel(def).filter((x) => !def.custom || x.severity === 'error');
+    assert.deepEqual(found, [], def.name);
+  }
+});

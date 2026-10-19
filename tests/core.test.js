@@ -775,3 +775,22 @@ test('fuel cells always come back on respawn, even ones taken before the checkpo
   Core.restoreActors(world, save);
   assert.equal(world.fuels[0].taken, false);
 });
+
+test('parseRoute knows the level editor and its play-test', () => {
+  assert.deepEqual(Core.parseRoute('#/editor', 5), { screen: 'editor' });
+  assert.deepEqual(Core.parseRoute('#/editor/test', 5), { screen: 'game', test: true });
+});
+
+test('validateLevel reports errors and unfair spots with where to look', () => {
+  const ok = { name: 'ok', map: ['#######', '#.....#', '#.....#', '#.....#', '#.S..G#', '#=====#', '#######'] };
+  assert.deepEqual(Core.validateLevel(ok), []);
+  const msgs = (def) => Core.validateLevel(def).map((x) => `${x.severity}: ${x.message}`);
+  assert.match(msgs({ name: 'x', map: ['#####', '#.S.#', '#===#', '#####'] })[0], /error: .*no goal/);
+  assert.ok(msgs({ ...ok, map: ['#######', '#..#..#', '#..#..#', '#..#..#', '#.S#.G#', '#=====#', '#######'] })
+    .some((m) => /walled off/.test(m)));
+  assert.ok(msgs({ ...ok, map: ['#######', '#.....#', '#.....#', '#.....#', '#.S..G#', '#.....#', '#######'] })
+    .some((m) => /must stand on a pad/.test(m)));
+  const warn = Core.validateLevel({ ...ok, enemies: [{ x: 4, y: 3 }] });
+  assert.equal(warn[0].severity, 'warning');
+  assert.equal(warn[0].x, 4);
+});

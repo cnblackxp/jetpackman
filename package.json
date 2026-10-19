@@ -7,7 +7,7 @@
   "main": "index.html",
   "scripts": {
     "postinstall": "node scripts/vendor.js",
-    "start": "python -m http.server 8123",
+    "start": "node scripts/dev-server.js",
     "test": "node --test tests/",
     "desktop": "node scripts/run-nw.js",
     "package": "node scripts/package-nw.js",

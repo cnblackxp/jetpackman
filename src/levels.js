@@ -1485,14 +1485,38 @@
   }
   for (const d of DEFS) d.coins = [...autoCoins(d), ...(d.coins || [])];
 
+  // ---------- Levels from the editor (src/levels-custom.js, see src/custom-io.js) ----------
+  // Edited built-in levels replace the originals by name; new levels get a "Custom" act at the end.
+  // Drafts (saved while they still had errors) stay in the editor and never reach the game.
+  const BUILTIN = JSON.parse(JSON.stringify(DEFS)); // the originals, for the editor's "Revert"
+  let CUSTOM = { overrides: {}, levels: [] };
+  try {
+    CUSTOM = (typeof module === 'object' && module.exports ? require('./levels-custom.js') : root.CUSTOM_LEVELS) || CUSTOM;
+  } catch (e) { /* no custom levels file */ }
+  for (const [name, def] of Object.entries(CUSTOM.overrides || {})) {
+    const i = DEFS.findIndex((d) => d.name === name);
+    if (i >= 0 && def && !def.draft) DEFS[i] = { ...def, name };
+  }
+  const customDefs = (CUSTOM.levels || []).filter((d) => d && !d.draft && !DEFS.some((b) => b.name === d.name))
+    .map((d) => ({ ...d, practice: true, custom: true }));
+
   const byName = new Map(DEFS.map((d) => [d.name, d]));
   const LEVELS = CAMPAIGN.map((name) => {
     if (!byName.has(name)) throw new Error(`Campaign lists unknown level "${name}"`);
     return byName.get(name);
   });
   if (LEVELS.length !== DEFS.length) throw new Error('Every level must appear in CAMPAIGN exactly once');
+  LEVELS.push(...customDefs);
+  const ORDER = [...CAMPAIGN, ...customDefs.map((d) => d.name)];
+  const allActs = customDefs.length
+    ? [...ACTS, { title: 'Custom', about: 'Made in the level editor', practice: true, custom: true, levels: customDefs.map((d) => d.name) }]
+    : ACTS;
   // Acts for the level select: { title, about, practice, levels: [index into LEVELS] }
-  LEVELS.acts = ACTS.map((act) => ({ ...act, levels: act.levels.map((name) => CAMPAIGN.indexOf(name)) }));
+  LEVELS.acts = allActs.map((act) => ({ ...act, levels: act.levels.map((name) => ORDER.indexOf(name)) }));
+  // For the level editor
+  LEVELS.builtin = BUILTIN;
+  LEVELS.customData = CUSTOM;
+  LEVELS.autoCoins = autoCoins;
 
   if (typeof module === 'object' && module.exports) module.exports = LEVELS;
   else root.LEVELS = LEVELS;
