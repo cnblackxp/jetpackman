@@ -146,6 +146,18 @@ just the canvas. `route()` reads `location.hash` via `Core.parseRoute` and calls
 Navigation always goes through `navigate(hash)` so history works. A level loads on every
 `#/level/<n>` route. Menus show level 1 as a live backdrop.
 
+## Deaths, checkpoints and pause
+
+- **Death screen:** `die(cause)` sets `mode = 'dead'`; a "YOU DIED"-style overlay (`deathLayer`: dark
+  band, red CRASHED, then "click to restart") fades in over `DEATH_FADE` (1.1 s). A click after that
+  calls `resetPlayer()`; `R` restarts the whole level any time. There is no automatic respawn.
+- **Checkpoint saves:** landing on a checkpoint pad stores `Core.snapshotActors(world, p)` (which drones
+  are destroyed, shields/coins taken, whether you carry a shield). Dying with a checkpoint calls
+  `Core.restoreActors` + restores the shield; dying without one calls `Core.resetActors` (everything back).
+- **Pause:** `Esc` during play sets `state.paused` and opens the menu over the frozen level (no movers,
+  drones or timer). The menu shows **Resume**; returning to `#/level/<same>` resumes, while clicking any
+  other level link (`state.forceRestart`) starts fresh.
+
 ## Coins and effects
 
 - **Coins** (`world.coins`, collected in `touchActors` → `coin` event). `autoCoins` (levels.js) floats one

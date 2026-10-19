@@ -599,17 +599,40 @@ test('the win radius is generous: wider than the drawn flag ring', () => {
 
 // ---------- Coins and death causes ----------
 
-test('coins are collected once and reset on a full restart, but not at a checkpoint', () => {
+test('coins are collected once', () => {
   const { world, p } = arena({ coins: [{ x: 6, y: 4 }, { x: 12, y: 4 }] });
   airborne(p, 6, 4);
   assert.deepEqual(Core.stepPlayer(world, p, 1 / 60).map((e) => e.type), ['coin']);
   assert.equal(world.coins[0].taken, true);
   assert.deepEqual(Core.stepPlayer(world, p, 1 / 60).map((e) => e.type), [], 'not collected twice');
-
-  Core.resetActors(world, true);
-  assert.equal(world.coins[0].taken, true, 'kept when respawning at a checkpoint');
   Core.resetActors(world);
-  assert.equal(world.coins[0].taken, false, 'back on a full restart');
+  assert.equal(world.coins[0].taken, false, 'a full reset puts it back');
+});
+
+test('a checkpoint save restores drones, pickups, coins and your shield as they were', () => {
+  const { world, p } = arena({
+    enemies: [{ x: 8, y: 3 }, { x: 14, y: 3 }],
+    shields: [{ x: 5, y: 3 }, { x: 16, y: 3 }],
+    coins: [{ x: 6, y: 5 }, { x: 15, y: 5 }],
+  });
+  // before reaching the checkpoint: drone 0 destroyed, shield 0 and coin 0 taken, carrying a shield
+  world.enemies[0].alive = false;
+  world.shields[0].taken = true;
+  world.coins[0].taken = true;
+  p.shield = true;
+  const save = Core.snapshotActors(world, p);
+  // after the checkpoint: the rest gets used up, then you die
+  world.enemies[1].alive = false;
+  Object.assign(world.enemies[0], { x: 0 });
+  world.shields[1].taken = true;
+  world.coins[1].taken = true;
+
+  Core.restoreActors(world, save);
+  assert.deepEqual(world.enemies.map((e) => e.alive), [false, true], 'destroyed before the save stays destroyed');
+  assert.equal(world.enemies[1].x, 14 * TILE, 'surviving drones return home');
+  assert.deepEqual(world.shields.map((sh) => sh.taken), [true, false]);
+  assert.deepEqual(world.coins.map((c) => c.taken), [true, false]);
+  assert.equal(save.shield, true, 'the save remembers you carried a shield');
 });
 
 test('deaths report what killed you', () => {

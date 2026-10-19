@@ -155,6 +155,12 @@
       tone({ type: 'square', from: 1318.51 * k, dur: 0.22, peak: 0.045, delay: 0.06 });
       tone({ type: 'sine', from: 2637 * k, dur: 0.15, peak: 0.02, delay: 0.06 });
     }),
+    // CRASHED appears: a low, ominous swell
+    deathSting: play(() => {
+      tone({ type: 'sine', from: 98, to: 82, dur: 1.8, peak: 0.16, attack: 0.25 });
+      tone({ type: 'triangle', from: 196, to: 164, dur: 1.4, peak: 0.05, attack: 0.3 });
+      noise({ dur: 1.2, peak: 0.04, type: 'lowpass', from: 300, to: 120, attack: 0.3 });
+    }),
     // Saw death: a grinding buzz and a wet splat
     deathSaw: play(() => {
       tone({ type: 'sawtooth', from: 220, to: 90, dur: 0.35, peak: 0.08 });

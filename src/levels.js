@@ -66,8 +66,8 @@
         b.rock(10, 8, 2, 5);                                  // first hop
         b.rock(13, 12, 6); b.pad(13, 11, 6);
         b.rock(24, 9, 5, 4); b.pad(24, 8, 5);                 // raised pad
-        b.rock(38, 12, 5); b.pad(38, 11, 5);
-        b.rock(45, 4, 2, 9);                                  // tall wall: use the pusher
+        b.rock(38, 12, 5); b.checkpoint(38, 11, 5);           // halfway checkpoint
+        b.rock(45, 6, 2, 7);                                  // wall: the pusher carries you over
         b.rock(48, 12, 5); b.pad(48, 11, 5);
         b.rock(57, 12, 6); b.pad(57, 11, 6); b.set(60, 9, 'G');
       }),
@@ -81,7 +81,7 @@
         { x: 60, y: 6.3, text: 'Reach the flag!' },
       ],
       pushers: [
-        { x: 43, y: 8.5, angle: -70, power: 520 },
+        { x: 43, y: 8.5, angle: -65, power: 560 },  // tuned by playing: clears the wall on its own
       ],
       movers: [
         { shape: 'saw', r: 0.6, path: [[55, 2.5], [55, 9.5]], speed: 1.2 },
@@ -624,7 +624,7 @@
         b.pillar(50, 10, 5); b.set(52, 8, 'G');
       }),
       shields: [{ x: 7, y: 11 }, { x: 19, y: 10 }, { x: 32, y: 8 }],
-      enemies: [{ x: 13, y: 13 }, { x: 26, y: 3 }, { x: 39, y: 13.5 }, { x: 48, y: 7 }],
+      enemies: [{ x: 13, y: 13 }, { x: 26, y: 3 }, { x: 40, y: 14.5 }, { x: 48, y: 7 }],
     },
     {
       // Act 6 · pushers fling you through drone territory
@@ -643,7 +643,7 @@
         { x: 38, y: 6, angle: 20, power: 420 },
       ],
       shields: [{ x: 22, y: 5 }],
-      enemies: [{ x: 22, y: 12 }, { x: 34, y: 10 }, { x: 44, y: 15 }],
+      enemies: [{ x: 21.5, y: 12.5 }, { x: 32.5, y: 11 }, { x: 44, y: 15 }],
     },
     {
       // Act 6 peak · a cavern full of drones, shields scattered, two checkpoints
@@ -661,7 +661,7 @@
       }),
       shields: [{ x: 7, y: 19 }, { x: 25, y: 9 }, { x: 38, y: 8 }, { x: 47, y: 6 }],
       enemies: [
-        { x: 15, y: 12 }, { x: 20, y: 20 }, { x: 28, y: 8 },
+        { x: 15, y: 12 }, { x: 20, y: 20 }, { x: 28.5, y: 6 },
         { x: 36, y: 12 }, { x: 41, y: 20 }, { x: 49, y: 14 },
       ],
     },
@@ -678,7 +678,7 @@
       }),
       pushers: [{ x: 62, y: 15, angle: -60, power: 450 }],
       shields: [{ x: 21, y: 9 }],
-      enemies: [{ x: 35, y: 7 }, { x: 50, y: 17 }],
+      enemies: [{ x: 36, y: 6 }, { x: 50, y: 17 }],
     },
     {
       // Act 7 · drones guarding saw lanes
@@ -690,7 +690,7 @@
         b.pillar(50, 10, 9); b.set(55, 8, 'G');
       }),
       shields: [{ x: 7, y: 12 }, { x: 33, y: 9 }],
-      enemies: [{ x: 20, y: 7 }, { x: 34, y: 5 }, { x: 46, y: 12 }],
+      enemies: [{ x: 20, y: 7 }, { x: 34.5, y: 4.5 }, { x: 46, y: 12 }],
       movers: [
         { shape: 'saw', r: 0.6, path: [[12, 2], [12, 14]], speed: 2.4 },
         { shape: 'saw', r: 0.6, path: [[26, 2], [26, 14]], speed: 2.6, phase: 3 },
@@ -728,7 +728,7 @@
         b.ledge(1, 37, 8); b.set(4, 35, 'G');
       }),
       shields: [{ x: 3, y: 7 }, { x: 20, y: 19 }, { x: 12, y: 33 }],
-      enemies: [{ x: 4, y: 13 }, { x: 24, y: 20 }, { x: 4, y: 27 }, { x: 24, y: 34 }],
+      enemies: [{ x: 3, y: 12.5 }, { x: 24, y: 20 }, { x: 3, y: 26.5 }, { x: 24, y: 34 }],
       movers: [{ shape: 'saw', r: 0.6, path: [[8, 12], [18, 12]], speed: 2 }],
     },
     {
@@ -743,7 +743,7 @@
         b.pillar(57, 14, 6); b.set(60, 12, 'G');
       }),
       shields: [{ x: 7, y: 17 }, { x: 30, y: 12 }, { x: 44, y: 4 }],
-      enemies: [{ x: 17, y: 18 }, { x: 32, y: 6 }, { x: 34, y: 16 }, { x: 54, y: 6 }],
+      enemies: [{ x: 17, y: 18 }, { x: 31, y: 5 }, { x: 34, y: 16 }, { x: 54, y: 6 }],
       movers: [
         { shape: 'block', w: 2, h: 2, path: [[27, 8.2], [27, 11.8]], speed: 1.6 },
         { shape: 'saw', r: 0.6, orbit: { x: 46, y: 12, radius: 3 }, speed: 110 },
@@ -779,7 +779,7 @@
         b.ledge(18, 22, 5); b.set(20, 20, 'G');
       }),
       shields: [{ x: 24, y: 34 }, { x: 32, y: 4 }],
-      enemies: [{ x: 14, y: 30 }, { x: 36, y: 18 }, { x: 8, y: 15 }],
+      enemies: [{ x: 14, y: 30 }, { x: 38.5, y: 14.5 }, { x: 8, y: 15 }],
       movers: [
         { shape: 'saw', r: 0.6, orbit: { x: 20, y: 20, radius: 6 }, speed: 45 },
         { shape: 'saw', r: 0.6, orbit: { x: 20, y: 20, radius: 6 }, speed: 45, phase: 180 },
@@ -805,7 +805,7 @@
         b.pad(53, 15, 6); b.set(56, 13, 'G');
       }),
       shields: [{ x: 10, y: 13.5 }, { x: 30, y: 5 }, { x: 44, y: 13 }],
-      enemies: [{ x: 19.5, y: 5 }, { x: 40.5, y: 5 }, { x: 49, y: 13 }],
+      enemies: [{ x: 19.5, y: 5 }, { x: 40.5, y: 5 }, { x: 49.5, y: 13 }],
     },
     {
       // Act 8 · everything at once
@@ -851,7 +851,7 @@
         { x: 20, y: 5, angle: 0, power: 400 },        // shoves you away from the goal
       ],
       shields: [{ x: 9, y: 49 }, { x: 32, y: 16 }],
-      enemies: [{ x: 22, y: 42 }, { x: 13, y: 30 }, { x: 26, y: 30 }, { x: 37, y: 13 }, { x: 18, y: 12 }],
+      enemies: [{ x: 22, y: 42 }, { x: 13.5, y: 30.5 }, { x: 26, y: 30 }, { x: 37, y: 13 }, { x: 18, y: 12 }],
       movers: [
         { shape: 'saw', r: 0.6, orbit: { x: 30, y: 46, radius: 3 }, speed: 90 },
         { shape: 'block', w: 3, h: 1, path: [[12, 33.5], [30, 33.5]], speed: 3 },
@@ -892,6 +892,12 @@
         b.air(119, 8, 5, 28);         // shaft up
         b.air(119, 4, 10, 5);         // exit
         b.checkpoint(104, 35, 4);
+        // rest ledges up the exit shaft (27 tiles is far more than one stamina bar)
+        b.pad(122, 30, 2);
+        b.pad(119, 25, 2);
+        b.pad(122, 20, 2);
+        b.pad(119, 15, 2);
+        b.pad(122, 10, 2);
         // E · the long way down to the goal
         b.ledge(130, 12, 4, 'C');
         b.ledge(135, 24, 4);
@@ -903,10 +909,10 @@
         { x: 95, y: 30, angle: -60, power: 480 },
         { x: 134, y: 30, angle: 180, power: 400 },    // pushes you back from the goal
       ],
-      shields: [{ x: 60, y: 12 }, { x: 79, y: 22 }, { x: 88, y: 13 }, { x: 100, y: 16 }, { x: 131, y: 8 }],
+      shields: [{ x: 60, y: 12 }, { x: 79, y: 22 }, { x: 88, y: 13 }, { x: 100, y: 16 }, { x: 109, y: 33 }, { x: 131, y: 8 }],
       enemies: [
-        { x: 66, y: 12 }, { x: 74, y: 30 }, { x: 82, y: 8 }, { x: 92, y: 24 },
-        { x: 112, y: 33 }, { x: 121, y: 12 }, { x: 137, y: 18 }, { x: 142, y: 32 },
+        { x: 67.5, y: 10.5 }, { x: 74, y: 30 }, { x: 82, y: 8 }, { x: 93.5, y: 22.5 },
+        { x: 114, y: 31.5 }, { x: 137, y: 18 }, { x: 142, y: 32 },
       ],
       movers: [
         { shape: 'block', w: 3, h: 1, path: [[44, 37], [49, 37]], speed: 2.2 },

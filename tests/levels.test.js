@@ -117,6 +117,19 @@ for (const [i, def] of LEVELS.entries()) {
       }
     });
 
+    await t.test('no drone can see a checkpoint pad from within range (no respawn traps)', () => {
+      for (const cp of level.checkpoints) {
+        for (let k = 0; k < cp.width; k++) {
+          const x = (cp.col + k + 0.5) * TILE, y = cp.y - CFG.standOffset; // where you'd stand / respawn
+          for (const e of world.enemies) {
+            const d = Math.hypot(x - e.homeX, y - e.homeY);
+            const sees = d < e.range + TILE && Core.lineOfSight(level, e.homeX, e.homeY, x, y);
+            assert.ok(!sees, `drone at ${e.homeX / TILE},${e.homeY / TILE} watches the checkpoint at col ${cp.col + k}, row ${cp.row}`);
+          }
+        }
+      }
+    });
+
     await t.test('no drone can see the start pad from within range', () => {
       for (const e of world.enemies) {
         const d = Math.hypot(level.start.x - e.homeX, level.start.y - e.homeY);

@@ -139,13 +139,33 @@
 
   // Puts drones back home (alive, idle) and shield pickups back in place.
   // Called when a level starts and whenever the player respawns.
-  // keepCoins: respawning at a checkpoint keeps the coins you already collected
-  function resetActors(world, keepCoins = false) {
-    if (!keepCoins) for (const c of world.coins || []) c.taken = false;
+  // Full reset (level start, or a death with no checkpoint): every drone back home and alive,
+  // every shield and coin back in place.
+  function resetActors(world) {
+    for (const c of world.coins) c.taken = false;
     for (const e of world.enemies) {
       Object.assign(e, { x: e.homeX, y: e.homeY, state: 'idle', timer: 0, dir: { x: 0, y: 0 }, traveled: 0, alive: true });
     }
     for (const sh of world.shields) sh.taken = false;
+  }
+
+  // Checkpoint save: what's been destroyed / picked up so far, and whether you carry a shield.
+  function snapshotActors(world, p) {
+    return {
+      enemies: world.enemies.map((e) => e.alive),
+      shields: world.shields.map((sh) => !!sh.taken),
+      coins: world.coins.map((c) => !!c.taken),
+      shield: !!(p && p.shield),
+    };
+  }
+
+  // Back to a checkpoint save: drones destroyed before it stay gone (the rest return home),
+  // pickups taken before it stay taken, everything after it comes back.
+  function restoreActors(world, snap) {
+    resetActors(world);
+    world.enemies.forEach((e, i) => { e.alive = snap.enemies[i]; });
+    world.shields.forEach((sh, i) => { sh.taken = snap.shields[i]; });
+    world.coins.forEach((c, i) => { c.taken = snap.coins[i]; });
   }
 
   // ---------- Collision ----------
@@ -651,7 +671,7 @@
     TILE, VERSION, STAGE, DEFAULT_TUNING, PLAYER_SKINS,
     parseLevel, createWorld, tileAt, isSolid, isPad, isCheckpoint, isBlock,
     circleHitsSolid, circleHitsBlock, lineOfSight, bounceOffRock, resolvePads,
-    updateEnemies, resetActors,
+    updateEnemies, resetActors, snapshotActors, restoreActors,
     moverPosition, updateMovers, hitsMover, checkPushers,
     createPlayer, thrustDirection, tryThrust, updateStamina, refillOnLanding, stepPlayer,
     parseRoute, levelHash,

@@ -3,7 +3,7 @@
   const Core = window.JetpackCore;
   const { TILE } = Core;
   const CFG = Core.DEFAULT_TUNING;
-  const RESPAWN_DELAY = 1.0;
+  const DEATH_FADE = 1.1;   // s for the CRASHED overlay to fade in; then a click restarts
 
   // ---------- Settings + progress (localStorage, optional) ----------
   const SETTINGS_KEY = 'jetpackman.settings';
@@ -91,6 +91,42 @@
   });
   versionText.anchor.set(1, 0);
   hud.addChild(hudText, msgText, versionText);
+
+  // "YOU DIED"-style death screen: a dark band fades in over the (still visible) level,
+  // big red CRASHED swells slightly, then a small hint asks for a click.
+  const deathLayer = new PIXI.Container();
+  const deathBand = new PIXI.Graphics();
+  const deathText = new PIXI.Text('CRASHED', {
+    fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 104, fontWeight: '700', fill: 0xa8141c,
+    letterSpacing: 10, dropShadow: true, dropShadowColor: 0x000000, dropShadowBlur: 12, dropShadowDistance: 0,
+  });
+  deathText.anchor.set(0.5);
+  const deathHint = new PIXI.Text('click to restart', {
+    fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 18, fill: 0xd8c9b8, letterSpacing: 3,
+  });
+  deathHint.anchor.set(0.5);
+  deathLayer.addChild(deathBand, deathText, deathHint);
+  deathLayer.visible = false;
+  hud.addChild(deathLayer);
+
+  function drawDeathScreen(t) {
+    const sw = app.screen.width, sh = app.screen.height;
+    const k = Math.min(1, t / DEATH_FADE), ease = k * k * (3 - 2 * k);
+    const band = Math.min(260, sh * 0.32), cy = sh / 2;
+    deathBand.clear();
+    // soft-edged dark band: stacked strips get lighter toward the edges, the level shows through
+    for (let i = 0; i < 12; i++) {
+      const f = i / 12, h = band * (1 - f * 0.55);
+      deathBand.beginFill(0x000000, 0.075 * ease).drawRect(0, cy - h / 2, sw, h).endFill();
+    }
+    deathText.position.set(sw / 2, cy - 6);
+    deathText.alpha = ease;
+    deathText.scale.set(Math.min(1, sw / 900) * (0.96 + 0.06 * ease));
+    const hintK = Math.max(0, Math.min(1, (t - DEATH_FADE) / 0.4));
+    deathHint.position.set(sw / 2, cy + band * 0.32);
+    deathHint.alpha = hintK * (0.75 + 0.25 * Math.sin(t * 3));
+    deathHint.text = state.checkpoint ? 'click to continue from the checkpoint' : 'click to restart';
+  }
 
   const reticle = new PIXI.Graphics();
   reticle.lineStyle(2, 0xffffff, 0.9).drawCircle(0, 0, 8);
@@ -191,6 +227,9 @@
     levelTime: 0,
     deaths: 0,        // this level
     checkpoint: null, // { x, y } respawn point after reaching a checkpoint pad
+    checkpointSave: null, // Core.snapshotActors(...) taken when you last landed on a checkpoint
+    paused: false,    // left with Esc: the level waits, frozen, behind the menus
+    forceRestart: false, // the next #/level/N route starts fresh instead of resuming
     toast: { text: '', time: 0 }, // short message over the HUD
     cam: { x: 0, y: 0 },
     look: { x: 0, y: 0 }, // camera lead in the direction of travel
@@ -215,6 +254,8 @@
     state.world = Core.createWorld(LEVELS[i], CFG);
     state.deaths = 0;
     state.checkpoint = null;
+    state.checkpointSave = null;
+    state.paused = false;
     pusherFlash = new Map();
     particles = [];
     ripples = [];
@@ -231,11 +272,15 @@
 
   // After a death you respawn at the last checkpoint (the timer keeps running);
   // without one, or with fromStart (R key), the level restarts.
+  // Dying with no checkpoint resets everything. With one, the level goes back to exactly how it was
+  // when you last landed on it (drones destroyed, shields and coins taken, your shield).
   function resetPlayer(fromStart = false) {
-    if (fromStart) state.checkpoint = null;
-    Core.resetActors(state.world, !!state.checkpoint); // coins stay collected at a checkpoint
+    if (fromStart) { state.checkpoint = null; state.checkpointSave = null; }
+    if (state.checkpoint && state.checkpointSave) Core.restoreActors(state.world, state.checkpointSave);
+    else Core.resetActors(state.world);
     state.coins = state.world.coins.filter((c) => c.taken).length;
     state.p = Core.createPlayer(state.world.level, CFG, state.checkpoint);
+    if (state.checkpoint && state.checkpointSave) state.p.shield = state.checkpointSave.shield;
     for (const b of state.world.pushers) b.touching = false;
     player.visible = true;
     state.mode = 'play';
@@ -592,7 +637,8 @@
     const p = state.p;
     state.mode = 'dead';
     state.deaths++;
-    state.respawnTimer = RESPAWN_DELAY;
+    state.deathTime = 0;
+    setTimeout(() => { if (state.mode === 'dead') Sfx.deathSting(); }, 350);
     state.slowmo = 0.35;
     player.visible = false;
     const blood = settings.bloodEffects && (cause === 'saw' || cause === 'crusher');
@@ -729,6 +775,7 @@
         squash.x = 1.22; squash.y = 0.78;
         if (e.refilled) { Sfx.refill(); refillFlash = 0.5; }
         const cp = e.checkpoint;
+        if (cp) state.checkpointSave = Core.snapshotActors(state.world, state.p); // save on every checkpoint landing
         if (cp && !(state.checkpoint && state.checkpoint.x === cp.x && state.checkpoint.y === cp.y)) {
           const isNew = !state.checkpoint || Math.abs(state.checkpoint.y - cp.y) > 1 ||
             Math.abs(state.checkpoint.x - cp.x) > TILE * 8;
@@ -779,6 +826,8 @@
       else if (e.button === 2) thrust(true);
     } else if (state.mode === 'won' && e.button === 0) {
       navigate(Core.levelHash(Core.nextLevelAfter(LEVELS, state.levelIndex)));
+    } else if (state.mode === 'dead' && state.deathTime >= DEATH_FADE) {
+      resetPlayer(); // back to the last checkpoint, or the start
     } else if (state.mode === 'done' && e.button === 0) {
       navigate('#/levels');
     }
@@ -801,6 +850,10 @@
       return;
     }
     if (e.key === 'Escape') {
+      if (state.screen === 'game' && (state.mode === 'play' || state.mode === 'dead')) {
+        state.paused = true; // keep the level as it is
+        hoverHeld = false;
+      }
       if (state.screen !== 'menu') navigate('#/menu');
       return;
     }
@@ -820,7 +873,8 @@
     const w = state.world;
     const playing = state.screen === 'game';
 
-    if (!playing || state.mode === 'play' || state.mode === 'dead') Core.updateMovers(w, w.clock + dt);
+    const frozen = state.paused && !playing; // a paused level waits behind the menus
+    if (!frozen && (!playing || state.mode === 'play' || state.mode === 'dead')) Core.updateMovers(w, w.clock + dt);
 
     if (playing && state.mode === 'play') {
       const hover = hoverHeld && p.launched && !p.grounded;
@@ -839,8 +893,7 @@
       }
     } else if (playing && state.mode === 'dead') {
       Core.updateEnemies(w, null, dt, CFG);
-      state.respawnTimer -= dt;
-      if (state.respawnTimer <= 0) resetPlayer();
+      state.deathTime += rawDt; // the overlay fades in at real speed, then waits for a click
     }
 
     const m = mouseWorld();
@@ -864,6 +917,8 @@
     drawAimLine();
     updateCamera(dt);
     updateHud();
+    deathLayer.visible = state.screen === 'game' && state.mode === 'dead';
+    if (deathLayer.visible) drawDeathScreen(state.deathTime);
     reticle.position.set(mouse.x, mouse.y);
   });
 
@@ -913,7 +968,7 @@
     } else if (state.mode === 'play' && !state.p.launched) {
       msgText.text = lvl.signs ? '' : 'Left click: thrust away from the mouse  ·  Right click: thrust toward it';
     } else if (state.mode === 'dead') {
-      msgText.text = 'Crashed!';
+      msgText.text = '';
     } else if (state.mode === 'won') {
       msgText.text = `Level complete in ${state.levelTime.toFixed(1)}s!  ◆ ${state.coins}/${state.world.coins.length}\nClick for the next level`;
     } else if (state.mode === 'done') {
@@ -949,6 +1004,12 @@
 
   function buildMenu() {
     document.getElementById('lastLevelKey').textContent = Math.min(9, LEVELS.length);
+    const resume = document.getElementById('resumeBtn');
+    resume.hidden = !state.paused;
+    if (state.paused) {
+      resume.href = Core.levelHash(state.levelIndex);
+      resume.textContent = `Resume: ${LEVELS[state.levelIndex].name}`;
+    }
     const best = loadBest();
     const next = Core.firstUnbeaten(LEVELS, best);
     const anyBeaten = Object.keys(best).length > 0;
@@ -1078,9 +1139,12 @@
     const r = Core.parseRoute(location.hash, LEVELS.length);
     if (r.redirect) history.replaceState(null, '', r.redirect);
     if (r.screen === 'game') {
-      loadLevel(r.level);
+      if (state.paused && r.level === state.levelIndex && !state.forceRestart) state.paused = false; // resume
+      else loadLevel(r.level);
+      state.forceRestart = false;
     } else {
-      if (state.screen === 'game' || !state.world) loadLevel(0); // calm backdrop behind menus
+      // menus show the paused level behind them, or a calm backdrop
+      if (!state.paused && (state.screen === 'game' || !state.world)) loadLevel(0);
       if (r.screen === 'menu') buildMenu();
       if (r.screen === 'levels') buildLevelGrid();
       if (r.screen === 'options') buildOptions();
@@ -1088,11 +1152,18 @@
     showScreen(r.screen);
   }
 
+  // Picking a level (Play, Level Select, Tutorial, Test Ground) always starts it fresh;
+  // only Resume (or browser Back) continues a paused level.
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest && e.target.closest('a[href^="#/level/"]');
+    if (a && a.id !== 'resumeBtn') state.forceRestart = true;
+  }, true);
+
   window.addEventListener('hashchange', route);
   route();
 
   // Handy for debugging from the console
-  window.__jetpack = { state, Core, CFG, loadLevel, resetPlayer, mouse };
+  window.__jetpack = { state, Core, CFG, loadLevel, resetPlayer, mouse, world, app };
 
   // Desktop smoke test (used by `npm run test:desktop` and `npm run shot`):
   //   JetpackMan.exe --smoke-test=<file> [--smoke-level=<n | menu | levels | options>]
