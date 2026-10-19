@@ -420,7 +420,7 @@ test('sanitizeSettings fills defaults and rejects bad values', () => {
   });
   assert.deepEqual(s, {
     volume: 1, muted: true, screenShake: true, aimLine: true, headingMarker: false, startFullscreen: false,
-    playerSkin: 'classic', bloodEffects: true,
+    playerSkin: 'classic', bloodEffects: true, laserSight: true,
   });
   assert.equal(Core.sanitizeSettings({ playerSkin: 'pixel' }).playerSkin, 'pixel');
   assert.equal(Core.sanitizeSettings({ playerSkin: 'robot' }).playerSkin, 'classic', 'unknown skins fall back');
@@ -725,4 +725,32 @@ test('checkpoint saves remember items and ammo', () => {
   assert.equal(world.guns[0].taken, true);
   assert.equal(world.fuels[0].taken, false);
   assert.equal(save.ammo, 2);
+});
+
+test('bullets destroy saws (gone until a reset), crushers are bulletproof', () => {
+  const { world, p } = arena({ movers: [
+    { path: [[6, 3], [6, 3.01]], r: 0.5 },
+    { shape: 'block', w: 1, h: 1, path: [[10, 4], [10, 4.01]] },
+  ] });
+  Core.updateMovers(world, 0);
+  airborne(p, 6, 7); p.vx = 0; p.vy = 0; p.ammo = 3;
+  Core.fire(world, p, { x: 0, y: -1 });
+  let events = [];
+  for (let i = 0; i < 30 && world.bullets.length; i++) events.push(...Core.updateBullets(world, 1 / 60));
+  assert.deepEqual(events.map((e) => e.type), ['sawDestroyed']);
+  assert.equal(world.movers[0].alive, false);
+  assert.equal(Core.hitsMover(world.movers, world.movers[0].x, world.movers[0].y, 5), false, 'a broken saw is harmless');
+
+  const save = Core.snapshotActors(world, p);
+  Core.resetActors(world);
+  assert.equal(world.movers[0].alive, true, 'dying with no checkpoint brings it back');
+  Core.restoreActors(world, save);
+  assert.equal(world.movers[0].alive, false, 'shot before the checkpoint: stays broken');
+
+  p.x = 10 * Core.TILE; p.y = 7 * Core.TILE;
+  Core.fire(world, p, { x: 0, y: -1 });
+  events = [];
+  for (let i = 0; i < 30 && world.bullets.length; i++) events.push(...Core.updateBullets(world, 1 / 60));
+  assert.deepEqual(events.map((e) => e.type), ['bulletHit']);
+  assert.equal(world.movers[1].alive, true);
 });

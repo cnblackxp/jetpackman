@@ -125,6 +125,7 @@
         path: d.path && d.path.map(([x, y]) => ({ x: x * TILE, y: y * TILE })),
         orbit: d.orbit && { x: d.orbit.x * TILE, y: d.orbit.y * TILE, radius: d.orbit.radius * TILE },
         x: 0, y: 0,
+        alive: true, // saws can be shot to pieces
       })),
       signs: (def.signs || []).map((s) => ({ x: s.x * TILE, y: s.y * TILE, text: s.text })),
       enemies: (def.enemies || []).map((e) => ({
@@ -158,6 +159,7 @@
     for (const sh of world.shields) sh.taken = false;
     for (const f of world.fuels) f.taken = false;
     for (const g of world.guns) g.taken = false;
+    for (const m of world.movers) m.alive = true;
     world.bullets = [];
   }
 
@@ -169,6 +171,7 @@
       coins: world.coins.map((c) => !!c.taken),
       fuels: world.fuels.map((f) => !!f.taken),
       guns: world.guns.map((g) => !!g.taken),
+      movers: world.movers.map((m) => m.alive !== false),
       shield: !!(p && p.shield),
       ammo: p ? p.ammo || 0 : 0,
     };
@@ -183,6 +186,7 @@
     world.coins.forEach((c, i) => { c.taken = snap.coins[i]; });
     world.fuels.forEach((f, i) => { f.taken = !!(snap.fuels && snap.fuels[i]); });
     world.guns.forEach((g, i) => { g.taken = !!(snap.guns && snap.guns[i]); });
+    world.movers.forEach((m, i) => { m.alive = !snap.movers || snap.movers[i] !== false; });
   }
 
   // ---------- Collision ----------
@@ -314,6 +318,7 @@
 
   function hitsMover(movers, x, y, radius) {
     for (const m of movers) {
+      if (m.alive === false) continue;
       if (m.shape === 'block') {
         const nx = Math.max(m.x - m.w / 2, Math.min(x, m.x + m.w / 2));
         const ny = Math.max(m.y - m.h / 2, Math.min(y, m.y + m.h / 2));
@@ -560,8 +565,9 @@
     return 'fired';
   }
 
-  // Moves bullets; they stop at rock or pads and destroy drones they touch.
+  // Moves bullets; they stop at rock, pads and crushers, and destroy drones and saws they touch.
   // Returns events: { type: 'bulletHit', x, y } | { type: 'enemyKilled', enemy, byBullet: true }
+  //   | { type: 'sawDestroyed', saw }
   function updateBullets(world, dt, cfg = DEFAULT_TUNING) {
     const events = [];
     world.bullets = world.bullets.filter((b) => {
@@ -572,6 +578,17 @@
         b.x += (b.vx * dt) / steps;
         b.y += (b.vy * dt) / steps;
         if (circleHitsBlock(world.level, b.x, b.y, 3)) { events.push({ type: 'bulletHit', x: b.x, y: b.y }); return false; }
+        const saw = world.movers.find((m) => m.alive !== false && m.shape !== 'block'
+          && Math.hypot(b.x - m.x, b.y - m.y) < m.r * 0.85 + cfg.bulletRadius);
+        if (saw) {
+          saw.alive = false;
+          events.push({ type: 'sawDestroyed', saw });
+          return false;
+        }
+        if (hitsMover(world.movers.filter((m) => m.shape === 'block'), b.x, b.y, 3)) {
+          events.push({ type: 'bulletHit', x: b.x, y: b.y }); // crushers are bulletproof
+          return false;
+        }
         const e = world.enemies.find((en) => en.alive && Math.hypot(b.x - en.x, b.y - en.y) < en.r + cfg.bulletRadius);
         if (e) {
           e.alive = false;
@@ -615,6 +632,7 @@
       if (!p.shield) return hit.shape === 'block' ? 'crusher' : 'saw';
       let best = null;
       for (const m of world.movers) {
+        if (m.alive === false) continue;
         const d = Math.hypot(p.x - m.x, p.y - m.y);
         if (!best || d < best.d) best = { m, d };
       }
@@ -735,9 +753,10 @@
     startFullscreen: false,  // desktop (NW.js) build only
     playerSkin: 'classic',   // 'classic' (drawn) or 'pixel' (sprite sheet art)
     bloodEffects: true,      // blood bursts when killed by saws/crushers (off: plain debris)
+    laserSight: true,        // red sight line from the pistol while you have bullets
   });
   const PLAYER_SKINS = ['classic', 'pixel'];
-  const BOOLEAN_SETTINGS = ['muted', 'screenShake', 'aimLine', 'headingMarker', 'startFullscreen', 'bloodEffects'];
+  const BOOLEAN_SETTINGS = ['muted', 'screenShake', 'aimLine', 'headingMarker', 'startFullscreen', 'bloodEffects', 'laserSight'];
 
   function sanitizeSettings(raw) {
     const s = Object.assign({}, DEFAULT_SETTINGS);
@@ -751,7 +770,7 @@
   return {
     TILE, VERSION, STAGE, DEFAULT_TUNING, PLAYER_SKINS,
     parseLevel, createWorld, tileAt, isSolid, isPad, isCheckpoint, isBlock,
-    circleHitsSolid, circleHitsBlock, lineOfSight, bounceOffRock, resolvePads,
+    circleHitsSolid, circleHitsBlock, hitsMover, lineOfSight, bounceOffRock, resolvePads,
     updateEnemies, resetActors, snapshotActors, restoreActors, fire, updateBullets,
     moverPosition, updateMovers, hitsMover, checkPushers,
     createPlayer, thrustDirection, tryThrust, updateStamina, refillOnLanding, stepPlayer,

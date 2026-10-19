@@ -382,6 +382,7 @@
     state.world.movers.forEach((m, i) => {
       const g = moverLayer.children[i];
       g.position.set(m.x, m.y);
+      g.visible = m.alive !== false;
       if (m.shape === 'saw') g.rotation = state.world.clock * 8;
     });
   }
@@ -552,12 +553,37 @@
   // Optional faint line showing where a left click would send you
   function drawAimLine() {
     aimG.clear();
-    if (!settings.aimLine || state.screen !== 'game' || state.mode !== 'play') return;
+    if (state.screen !== 'game' || state.mode !== 'play') return;
     const p = state.p, m = mouseWorld();
     const dir = Core.thrustDirection(p, m.x, m.y, false);
     if (!dir) return;
+    if (settings.laserSight && p.ammo > 0) drawLaser(p, dir);
+    if (!settings.aimLine) return;
     aimG.lineStyle(2, 0xffffff, 0.18).moveTo(p.x, p.y).lineTo(m.x, m.y);
     aimG.lineStyle(2, 0xffe066, 0.45).moveTo(p.x + dir.x * 24, p.y + dir.y * 24).lineTo(p.x + dir.x * 60, p.y + dir.y * 60);
+  }
+
+  // Pistol laser sight: from the muzzle along where the head points, to the first thing a bullet
+  // would hit (rock, pad, crusher) or as far as a bullet flies. Brighter when it's on a target.
+  function drawLaser(p, dir) {
+    const w = state.world, maxLen = CFG.bulletSpeed * CFG.bulletLife;
+    const crushers = w.movers.filter((mv) => mv.shape === 'block');
+    const sx = p.x + dir.x * 22, sy = p.y + dir.y * 22;
+    let len = 0, target = false;
+    for (; len < maxLen; len += 6) {
+      const x = sx + dir.x * len, y = sy + dir.y * len;
+      if (Core.circleHitsBlock(w.level, x, y, 3) || Core.hitsMover(crushers, x, y, 3)) break;
+      if (w.enemies.some((en) => en.alive && Math.hypot(x - en.x, y - en.y) < en.r + CFG.bulletRadius)
+        || w.movers.some((mv) => mv.alive !== false && mv.shape !== 'block' && Math.hypot(x - mv.x, y - mv.y) < mv.r * 0.85 + CFG.bulletRadius)) {
+        target = true;
+        break;
+      }
+    }
+    const ex = sx + dir.x * len, ey = sy + dir.y * len;
+    aimG.lineStyle(4, 0xff3355, target ? 0.25 : 0.12).moveTo(sx, sy).lineTo(ex, ey); // soft glow
+    aimG.lineStyle(1.5, 0xff4d6d, target ? 0.9 : 0.55).moveTo(sx, sy).lineTo(ex, ey);
+    aimG.lineStyle(0).beginFill(0xff4d6d, target ? 1 : 0.7).drawCircle(ex, ey, target ? 5 : 3).endFill();
+    if (target) aimG.lineStyle(1.5, 0xffffff, 0.8).drawCircle(ex, ey, 9 + Math.sin(elapsed * 12) * 2);
   }
 
   // ---------- Drones, shields ----------
@@ -899,6 +925,12 @@
         Sfx.gunGet();
         radialBurst(e.item.x, e.item.y, 16, [0xd9a441, 0xffe066, 0xdfe6ff], 160, 0, 0.5);
         state.toast = { text: `Pistol: ${CFG.gunAmmo} shots. Scroll to fire`, time: 1.8 };
+      } else if (e.type === 'sawDestroyed') {
+        Sfx.sawBreak();
+        const s = e.saw;
+        radialBurst(s.x, s.y, 36, [0xffe066, 0xffa53d, 0xffffff], 420, 500, 0.6);   // sparks
+        radialBurst(s.x, s.y, 14, [0xc9cfdc, 0x8a92ad, 0x5b6275], 220, 700, 1.1);   // metal shards
+        if (settings.screenShake) state.shake = Math.max(state.shake, 7);
       } else if (e.type === 'bulletHit') {
         Sfx.bulletHit();
         radialBurst(e.x, e.y, 8, [0xffe066, 0x8a92ad], 160, 300, 0.35);
@@ -1110,9 +1142,10 @@
   function buildMenu() {
     document.getElementById('lastLevelKey').textContent = Math.min(9, LEVELS.length);
     const resume = document.getElementById('resumeBtn');
-    resume.hidden = !state.paused;
+    const restart = document.getElementById('restartBtn');
+    resume.hidden = restart.hidden = !state.paused;
     if (state.paused) {
-      resume.href = Core.levelHash(state.levelIndex);
+      resume.href = restart.href = Core.levelHash(state.levelIndex);
       resume.textContent = `Resume: ${LEVELS[state.levelIndex].name}`;
     }
     const best = loadBest();
@@ -1198,6 +1231,7 @@
     document.getElementById('optAim').checked = settings.aimLine;
     document.getElementById('optSkin').value = settings.playerSkin;
     document.getElementById('optBlood').checked = settings.bloodEffects;
+    document.getElementById('optLaser').checked = settings.laserSight;
     document.getElementById('optHeading').checked = settings.headingMarker;
     document.getElementById('optFullscreen').checked = isFullscreen();
     document.getElementById('optStartFullscreen').checked = settings.startFullscreen;
@@ -1220,6 +1254,7 @@
   document.getElementById('optStartFullscreen').addEventListener('change', (e) => saveSettings({ startFullscreen: e.target.checked }));
   document.getElementById('optSkin').addEventListener('change', (e) => { saveSettings({ playerSkin: e.target.value }); applySkin(); });
   document.getElementById('optBlood').addEventListener('change', (e) => saveSettings({ bloodEffects: e.target.checked }));
+  document.getElementById('optLaser').addEventListener('change', (e) => saveSettings({ laserSight: e.target.checked }));
   document.getElementById('versionTag').innerHTML = `v${Core.VERSION} <b>${Core.STAGE}</b>`;
   document.getElementById('quitBtn').addEventListener('click', (e) => {
     e.preventDefault();

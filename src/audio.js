@@ -111,6 +111,12 @@
       noise({ dur: 0.25, peak: 0.25, type: 'lowpass', from: 2200, to: 300 });
       tone({ type: 'triangle', from: 880, to: 220, dur: 0.3, peak: 0.1 });
     }),
+    // Saw shot apart: a metallic clang and a grinding crunch
+    sawBreak: play(() => {
+      [1180, 1730, 2410].forEach((f) => tone({ type: 'square', from: f, to: f * 0.7, dur: 0.35, peak: 0.025 }));
+      noise({ dur: 0.35, peak: 0.3, type: 'bandpass', from: 3000, to: 800, q: 2 });
+      noise({ dur: 0.25, peak: 0.2, type: 'lowpass', from: 1200, to: 200, delay: 0.05 });
+    }),
     // Shield picked up: bright rising sparkle
     shieldGet: play(() => {
       [659.25, 880, 1174.66].forEach((f, i) =>
