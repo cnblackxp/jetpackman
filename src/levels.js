@@ -1336,6 +1336,18 @@
         b.set(14, 4, 'G');            // flag in open air straight up the middle
       }),
       fuels: [{ x: 14, y: 82 }, { x: 6, y: 62 }, { x: 21, y: 42 }, { x: 6, y: 22 }],
+      // saws all the way up to the flag
+      movers: [
+        { shape: 'saw', r: 0.55, path: [[3, 78], [24, 78]], speed: 2 },
+        { shape: 'saw', r: 0.55, orbit: { x: 14, y: 70, radius: 3 }, speed: 80 },
+        { shape: 'saw', r: 0.55, path: [[10, 58], [24, 58]], speed: 2.5 },
+        { shape: 'saw', r: 0.55, path: [[14, 52], [14, 40]], speed: 2 },
+        { shape: 'saw', r: 0.55, orbit: { x: 14, y: 34, radius: 3.5 }, speed: -90 },
+        { shape: 'saw', r: 0.55, orbit: { x: 14, y: 34, radius: 3.5 }, speed: -90, phase: 180 },
+        { shape: 'saw', r: 0.55, path: [[3, 20], [24, 20]], speed: 3 },
+        { shape: 'saw', r: 0.55, orbit: { x: 12, y: 14, radius: 3 }, speed: 100 },
+        { shape: 'saw', r: 0.55, path: [[4, 7], [16, 7]], speed: 3 },
+      ],
     },
   ];
 
