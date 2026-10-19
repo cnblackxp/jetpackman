@@ -64,6 +64,11 @@
   const pickupG = new PIXI.Graphics();  // shield items
   const enemyG = new PIXI.Graphics();   // drones
   const auraG = new PIXI.Graphics();    // shield bubble around the player
+  // The player is a container with two looks: the drawn "classic" figure and the pixel-art sprite
+  // (Options → Character art). Both face +x with the feet toward +y, so the same rotation works.
+  const PIXEL_FRAMES = [0, 1, 2, 3].map((i) => PIXI.Texture.from(`assets/sprites/jetpackman-fly-${i}.png`));
+  let classicArt, pixelArt;
+
   const player = makePlayer();
   world.addChild(signLayer, pusherG, terrainG, goalG, moverLayer, pickupG, enemyG, aimG, player, auraG, fxG, headingG, staminaG);
 
@@ -75,7 +80,11 @@
     dropShadow: true, dropShadowDistance: 2, dropShadowAlpha: 0.6,
   });
   msgText.anchor.set(0.5);
-  hud.addChild(hudText, msgText);
+  const versionText = new PIXI.Text(`v${Core.VERSION} ${Core.STAGE}`, {
+    fontFamily: 'Segoe UI, Arial', fontSize: 13, fill: 0x8f9ac6,
+  });
+  versionText.anchor.set(1, 0);
+  hud.addChild(hudText, msgText, versionText);
 
   const reticle = new PIXI.Graphics();
   reticle.lineStyle(2, 0xffffff, 0.9).drawCircle(0, 0, 8);
@@ -87,6 +96,7 @@
 
   // Feet point toward +y locally, so rotating by (aim - 90deg) points the legs at the mouse.
   function makePlayer() {
+    const root = new PIXI.Container();
     const c = new PIXI.Container();
     const g = new PIXI.Graphics();
     g.lineStyle(3.5, 0x2b3b6b).moveTo(-2, 4).lineTo(-3, 15).moveTo(3, 4).lineTo(4, 15); // legs
@@ -101,7 +111,31 @@
     g.beginFill(0x6fd3ff).drawRoundedRect(1, -15, 5, 3.5, 1.5).endFill();                 // visor
     c.addChild(g);
     c.scale.set(1.3);
-    return c;
+
+    // Frames are 2x the classic figure's height (~46 px); the sheet faces left, so mirror it
+    const s = new PIXI.Sprite(PIXEL_FRAMES[3]);
+    s.anchor.set(0.5);
+    s.scale.set(-0.5, 0.5);
+
+    classicArt = c;
+    pixelArt = s;
+    root.addChild(c, s);
+    applySkin();
+    return root;
+  }
+
+  function applySkin() {
+    if (!classicArt) return;
+    const pixel = settings.playerSkin === 'pixel';
+    classicArt.visible = !pixel;
+    pixelArt.visible = pixel;
+  }
+
+  // Stride through the walk frames while flying around; stand still when slow or on a pad
+  function animatePixelArt(p) {
+    if (!pixelArt || !pixelArt.visible) return;
+    const moving = !p.grounded && Math.hypot(p.vx, p.vy) > 60;
+    pixelArt.texture = PIXEL_FRAMES[moving ? Math.floor(elapsed * 8) % 4 : 3];
   }
 
   function drawStars() {
@@ -268,7 +302,8 @@
   }
 
   function drawGoal(t) {
-    const g = goalG, { x, y } = state.world.level.goal, R = CFG.goalRadius;
+    // Drawn at its classic size; the win radius (CFG.goalRadius) matches the outer glow
+    const g = goalG, { x, y } = state.world.level.goal, R = 28;
     const pulse = 1 + Math.sin(t * 4) * 0.12;
     g.clear();
     g.beginFill(0x3dff9a, 0.12).drawCircle(x, y, R * 1.6 * pulse).endFill();
@@ -642,6 +677,7 @@
     const m = mouseWorld();
     player.position.set(state.p.x, state.p.y);
     player.alpha = state.p.invuln > 0 ? 0.45 + 0.4 * Math.sin(elapsed * 40) : 1; // flicker while protected
+    animatePixelArt(state.p);
     player.rotation = playing ? Math.atan2(m.y - state.p.y, m.x - state.p.x) - Math.PI / 2 : Math.sin(elapsed) * 0.15;
 
     drawMovers();
@@ -693,6 +729,7 @@
     hudText.text = `${lvl.practice ? 'Practice' : `Level ${state.levelIndex + 1}`}: ${lvl.name}` +
       `    Time ${state.levelTime.toFixed(1)}s    Deaths ${state.deaths}    [R] restart  [Esc] menu`;
     msgText.position.set(app.screen.width / 2, app.screen.height * 0.16);
+    versionText.position.set(app.screen.width - 14, 14);
     state.toast.time = Math.max(0, state.toast.time - app.ticker.deltaMS / 1000);
     if (state.mode === 'play' && state.toast.time > 0) {
       msgText.text = state.toast.text;
@@ -810,6 +847,7 @@
     document.getElementById('optMuted').checked = settings.muted;
     document.getElementById('optShake').checked = settings.screenShake;
     document.getElementById('optAim').checked = settings.aimLine;
+    document.getElementById('optSkin').value = settings.playerSkin;
     document.getElementById('optHeading').checked = settings.headingMarker;
     document.getElementById('optFullscreen').checked = isFullscreen();
     document.getElementById('optStartFullscreen').checked = settings.startFullscreen;
@@ -830,6 +868,8 @@
   document.getElementById('optHeading').addEventListener('change', (e) => saveSettings({ headingMarker: e.target.checked }));
   document.getElementById('optFullscreen').addEventListener('change', (e) => setFullscreen(e.target.checked));
   document.getElementById('optStartFullscreen').addEventListener('change', (e) => saveSettings({ startFullscreen: e.target.checked }));
+  document.getElementById('optSkin').addEventListener('change', (e) => { saveSettings({ playerSkin: e.target.value }); applySkin(); });
+  document.getElementById('versionTag').innerHTML = `v${Core.VERSION} <b>${Core.STAGE}</b>`;
   document.getElementById('quitBtn').addEventListener('click', (e) => {
     e.preventDefault();
     if (typeof nw !== 'undefined') nw.App.quit();

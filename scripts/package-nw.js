@@ -18,7 +18,7 @@ const { ROOT, getRuntimeZip, extractRuntime } = require('./nw-runtime');
 const pkg = require('../package.json');
 
 // Files and folders that make up the game itself
-const APP_FILES = ['index.html', 'src', 'vendor'];
+const APP_FILES = ['index.html', 'src', 'vendor', 'assets'];
 
 function parseArgs(argv) {
   const out = {};

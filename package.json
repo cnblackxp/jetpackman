@@ -1,7 +1,7 @@
 {
   "name": "jetpackman",
   "productName": "Jetpack Man",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "private": true,
   "description": "Mouse-controlled jetpack platformer built with PixiJS",
   "main": "index.html",

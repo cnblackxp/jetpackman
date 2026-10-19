@@ -420,7 +420,10 @@ test('sanitizeSettings fills defaults and rejects bad values', () => {
   });
   assert.deepEqual(s, {
     volume: 1, muted: true, screenShake: true, aimLine: true, headingMarker: false, startFullscreen: false,
+    playerSkin: 'classic',
   });
+  assert.equal(Core.sanitizeSettings({ playerSkin: 'pixel' }).playerSkin, 'pixel');
+  assert.equal(Core.sanitizeSettings({ playerSkin: 'robot' }).playerSkin, 'classic', 'unknown skins fall back');
   assert.equal(Core.sanitizeSettings({ volume: -1 }).volume, 0);
   assert.equal(Core.sanitizeSettings({ volume: NaN }).volume, Core.DEFAULT_SETTINGS.volume);
 });
@@ -577,4 +580,19 @@ test('respawning resets drones and shield pickups', () => {
   assert.equal(world.enemies[0].x, 10 * TILE);
   assert.equal(world.enemies[0].state, 'idle');
   assert.equal(world.shields[0].taken, false);
+});
+
+test('the game version matches package.json and is marked alpha', () => {
+  const pkg = require('../package.json');
+  assert.equal(Core.VERSION, pkg.version);
+  assert.equal(Core.STAGE, 'alpha');
+});
+
+test('the win radius is generous: wider than the drawn flag ring', () => {
+  assert.ok(CFG.goalRadius >= 40, `goalRadius ${CFG.goalRadius}`);
+  const { world, p } = setup();
+  const g = world.level.goal;
+  airborne(p, g.x / TILE, g.y / TILE);
+  p.x = g.x + 38; // well outside the 28 px ring, inside the glow
+  assert.deepEqual(Core.stepPlayer(world, p, 1 / 60).map((e) => e.type), ['won']);
 });

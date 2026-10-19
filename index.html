@@ -123,6 +123,11 @@
     .opt > span { text-align: left; }
     .opt .hint { display: block; color: var(--muted); font-size: 13px; }
     body:not(.desktop) .desktop-only { display: none !important; }
+    .opt select { background: #1a1e33; color: var(--text); border: 1px solid #4a5384; border-radius: 6px;
+      padding: 5px 8px; font: inherit; font-size: 15px; cursor: pointer; }
+    .version-tag { position: fixed; right: 14px; bottom: 10px; color: var(--muted); font-size: 13px; opacity: 0.8; }
+    body.in-game .version-tag { display: none; } /* the HUD shows it while playing */
+    .version-tag b { color: #ffc93d; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
     .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
   </style>
 </head>
@@ -148,6 +153,8 @@
       <span class="k"><kbd>1</kbd>–<kbd id="lastLevelKey">9</kbd></span><span>Jump to a level while playing</span>
     </div>
   </section>
+
+  <div class="version-tag" id="versionTag"></div>
 
   <section id="levels" class="screen panel-screen">
     <div class="panel">
@@ -176,6 +183,12 @@
         <input type="checkbox" id="optHeading"></label>
       <label class="opt"><span>Aim guide<span class="hint">Shows where a left click sends you</span></span>
         <input type="checkbox" id="optAim"></label>
+      <label class="opt">Character art
+        <select id="optSkin">
+          <option value="classic">Classic</option>
+          <option value="pixel">Pixel art</option>
+        </select>
+      </label>
       <label class="opt">Fullscreen <input type="checkbox" id="optFullscreen"></label>
       <label class="opt desktop-only"><span>Start in fullscreen<span class="hint">Otherwise the game opens in a resizable window</span></span>
         <input type="checkbox" id="optStartFullscreen"></label>

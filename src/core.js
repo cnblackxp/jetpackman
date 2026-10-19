@@ -6,6 +6,8 @@
   else root.JetpackCore = api;
 })(typeof self !== 'undefined' ? self : this, function () {
   const TILE = 40;
+  const VERSION = '0.0.1';   // keep in sync with package.json (a test checks)
+  const STAGE = 'alpha';
 
   const DEFAULT_TUNING = Object.freeze({
     gravity: 520,          // px/s^2
@@ -22,7 +24,7 @@
     staminaRegen: 32,      // per second
     regenDelay: 0.3,       // s after a thrust before refilling starts
     exhaustedRegenMultiplier: 1.5, // refill faster while locked out after running dry
-    goalRadius: 28,
+    goalRadius: 44,        // px: touching anywhere inside the flag's glow wins (was 28, the inner ring)
     pusherRadius: 0.8,     // tiles, default
     pusherPower: 480,      // px/s, default
     substeps: 4,
@@ -608,7 +610,9 @@
     volume: 0.6, muted: false, screenShake: true, aimLine: false,
     headingMarker: true,     // small cursor showing where the current thrust is carrying you
     startFullscreen: false,  // desktop (NW.js) build only
+    playerSkin: 'classic',   // 'classic' (drawn) or 'pixel' (sprite sheet art)
   });
+  const PLAYER_SKINS = ['classic', 'pixel'];
   const BOOLEAN_SETTINGS = ['muted', 'screenShake', 'aimLine', 'headingMarker', 'startFullscreen'];
 
   function sanitizeSettings(raw) {
@@ -616,11 +620,12 @@
     if (!raw || typeof raw !== 'object') return s;
     if (typeof raw.volume === 'number' && Number.isFinite(raw.volume)) s.volume = Math.min(1, Math.max(0, raw.volume));
     for (const k of BOOLEAN_SETTINGS) if (typeof raw[k] === 'boolean') s[k] = raw[k];
+    if (PLAYER_SKINS.includes(raw.playerSkin)) s.playerSkin = raw.playerSkin;
     return s;
   }
 
   return {
-    TILE, DEFAULT_TUNING,
+    TILE, VERSION, STAGE, DEFAULT_TUNING, PLAYER_SKINS,
     parseLevel, createWorld, tileAt, isSolid, isPad, isCheckpoint, isBlock,
     circleHitsSolid, circleHitsBlock, lineOfSight, bounceOffRock, resolvePads,
     updateEnemies, resetActors,

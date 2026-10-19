@@ -46,12 +46,15 @@ Pushing a version tag builds the desktop zip on GitHub and attaches it to a rele
 (`.github/workflows/release.yml`; tests run first):
 
 ```bash
-git tag v1.0.1
+git tag v0.0.2
 ```
 
 ```bash
-git push origin v1.0.1
+git push origin v0.0.2
 ```
+
+The game is in **alpha** (version `0.0.1`, shown in game). Keep `version` in `package.json` and
+`VERSION` in `src/core.js` equal; a test checks they match.
 
 The browser version on GitHub Pages updates on every push to `main`.
 
@@ -71,6 +74,8 @@ the menu has **Quit**.
 - `src/levels.js` – level data (map format documented at the top)
 - `src/audio.js` – synthesized sound effects
 - `src/game.js` – rendering, input, menus
+- `assets/sprites/` – pixel-art character: the original sheet plus frames cut by
+  `python scripts/extract-sprites.py assets/sprites/jetpackman-sheet.png`
 - `tests/` – `node --test` suites
 - `scripts/` – vendoring, NW.js download/packaging, desktop smoke test, level screenshots
 - `devlog/` – level sketches next to how they turned out in game

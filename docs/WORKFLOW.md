@@ -64,7 +64,8 @@ folders of older builds (their zips stay). NW.js version: `package.json` → `nw
 - **Browser:** GitHub Pages serves `main` (root) at https://cnblackxp.github.io/jetpackman/; every push
   to `main` updates it. `vendor/pixi.min.js` is committed so the site needs no CDN.
 - **Desktop release:** push a tag `v*` → `.github/workflows/release.yml` runs `npm test`, `npm run package`
-  and attaches the zip to a GitHub release. Bump `version` in `package.json` to match the tag.
+  and attaches the zip to a GitHub release. Bump `version` in `package.json` and `VERSION` in
+  `src/core.js` to match the tag (the game is alpha: 0.0.x).
 
 ## Open tasks
 

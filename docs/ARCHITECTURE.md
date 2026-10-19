@@ -65,7 +65,7 @@ All feel numbers live in `Core.DEFAULT_TUNING` (`src/core.js`). Current values:
 | staminaMax / thrustCost | 100 / 25 | 4 thrusts per bar |
 | staminaRegen / regenDelay | 32 / 0.3 | refill rate; pause after a thrust |
 | exhaustedRegenMultiplier | 1.5 | faster refill while locked out |
-| goalRadius | 28 | px |
+| goalRadius | 44 | px: win radius (the flag's outer glow; the ring is drawn at 28) |
 | pusherRadius / pusherPower | 0.8 tiles / 480 | pusher defaults |
 | substeps | 4 | physics substeps per frame (anti-tunnelling) |
 | hoverDrag / hoverSinkSpeed / hoverDrain | 6 / 30 / 3 | hover settle rate; sink px/s; stamina per s |
@@ -146,11 +146,25 @@ just the canvas. `route()` reads `location.hash` via `Core.parseRoute` and calls
 Navigation always goes through `navigate(hash)` so history works. A level loads on every
 `#/level/<n>` route. Menus show level 1 as a live backdrop.
 
+## Character art
+
+`player` is a container holding two looks: `classicArt` (the drawn figure) and `pixelArt` (a sprite
+using `assets/sprites/jetpackman-fly-0..3.png`, 57×92 frames drawn at half size, mirrored to face +x).
+`settings.playerSkin` ('classic' | 'pixel', Options → Character art) picks one via `applySkin()`;
+`animatePixelArt()` cycles the 4 stride frames at 8 fps while airborne and moving.
+Frames come from the sheet via `scripts/extract-sprites.py` (flood-fill background removal,
+shared crop box, Lanczos resize). The packager ships `assets/`.
+
+## Version
+
+`Core.VERSION` ('0.0.1') + `Core.STAGE` ('alpha') are shown in the menu (bottom right) and the
+in-game HUD (top right). Must equal `package.json` → `version` (tested).
+
 ## Persistence (`localStorage`, all wrapped in try/catch)
 
 | Key | Content |
 | --- | --- |
-| `jetpackman.settings` | `{ volume, muted, screenShake, aimLine, headingMarker, startFullscreen }` |
+| `jetpackman.settings` | `{ volume, muted, screenShake, aimLine, headingMarker, startFullscreen, playerSkin }` |
 | `jetpackman.best.v2` | `{ [levelName]: bestSeconds }`; keyed by **name** so reordering levels is safe |
 
 ## Audio (`audio.js`)
