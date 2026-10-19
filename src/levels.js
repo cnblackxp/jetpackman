@@ -333,23 +333,21 @@
       // Act 3 · twin saws sweep each lane of a low corridor; time each crossing, rest between
       name: 'Sawmill',
       map: buildMap(52, 14, (b) => {
-        b.pillar(1, 11, 4); b.set(2, 10, 'S');
-        b.rock(6, 1, 38, 4);          // low ceiling over the saw lanes
-        b.pillar(13, 10, 3);
-        b.pillar(23, 9, 3);
-        b.pillar(33, 10, 3);
-        b.pillar(44, 9, 7); b.set(47, 7, 'G');
+        // Playtested with mouse-like aim and timing error: 6-wide pads, 4-tile gaps, a 9-row corridor,
+        // and a checkpoint in the middle (narrow pads / low ceiling made every hop a coin flip)
+        b.pillar(1, 11, 6); b.set(2, 10, 'S');
+        b.rock(7, 1, 37, 3);          // ceiling over the saw lanes
+        b.pillar(11, 10, 6);
+        b.pillar(21, 10, 6, 'C');
+        b.pillar(31, 10, 6);
+        b.pillar(41, 9, 10); b.set(47, 7, 'G');
       }),
       movers: [
-        // each lane: two saws on the same track, half a cycle apart (r 0.8 -> 0.55: too big)
-        { shape: 'saw', r: 0.55, path: [[9, 5.8], [9, 11.2]], speed: 2.0 },
-        { shape: 'saw', r: 0.55, path: [[9, 5.8], [9, 11.2]], speed: 2.0, phase: 5.4 },
-        { shape: 'saw', r: 0.55, path: [[19, 5.8], [19, 11.2]], speed: 2.3 },
-        { shape: 'saw', r: 0.55, path: [[19, 5.8], [19, 11.2]], speed: 2.3, phase: 5.4 },
-        { shape: 'saw', r: 0.55, path: [[29, 5.8], [29, 11.2]], speed: 2.6, phase: 2 },
-        { shape: 'saw', r: 0.55, path: [[29, 5.8], [29, 11.2]], speed: 2.6, phase: 7.4 },
-        { shape: 'saw', r: 0.55, path: [[39, 5.8], [39, 11.2]], speed: 2.9, phase: 1 },
-        { shape: 'saw', r: 0.55, path: [[39, 5.8], [39, 11.2]], speed: 2.9, phase: 6.4 },
+        // one saw per lane (twin saws left almost no window for mouse play), r 0.8 -> 0.45
+        { shape: 'saw', r: 0.45, path: [[9, 5.8], [9, 11.2]], speed: 1.8 },
+        { shape: 'saw', r: 0.45, path: [[19, 5.8], [19, 11.2]], speed: 2.0, phase: 3 },
+        { shape: 'saw', r: 0.45, path: [[29, 5.8], [29, 11.2]], speed: 2.2, phase: 1 },
+        { shape: 'saw', r: 0.45, path: [[39, 5.8], [39, 11.2]], speed: 2.4, phase: 4 },
       ],
     },
     {

@@ -38,6 +38,27 @@ window.bot = {
 Remember **left click thrusts away from the mouse**, so `bot.click(-40, 70)` (mouse below-left)
 sends you up-right. After a death, `bot.tick(1.3)` (let CRASHED finish) then `bot.click(0, 70)`.
 
+## Human-like playtest (many runs, mouse imprecision)
+
+The bot above has perfect aim and frame-exact timing; players with a mouse don't. For that, use
+
+```bash
+node scripts/human-playtest.js Sawmill 400
+```
+
+It plays a level hundreds of times like a person: aim off by up to ±10°, clicks ±0.1 s off, 0.25 s
+reaction time, waits on pads until the hazards ahead look clear (and are moving away), launches
+up-right, then steers every 0.3-0.4 s (flatter near a ceiling), misjudging its landing by ±1 tile.
+It reports success per crossing and **where** deaths happen. Add a route for a level in `ROUTES`.
+
+Treat the numbers as a pessimistic floor (it never hovers or lines up carefully), but low
+per-crossing rates and clustered death spots point straight at unfair geometry.
+
+**Sawmill, measured this way:** 3-wide pads with 9-tile gaps landed only ~75% of hops even
+*without* saws; twin saws per lane left almost no window; a pad one row higher hit the low ceiling.
+After the fixes (6-wide pads, 4-tile gaps, one slower saw per lane at r 0.45, a 9-row corridor, a
+mid checkpoint) crossings went from 37% / 2% to 67-98%.
+
 ## A winning Tutorial run (22.2 s, 4/6 coins)
 
 | Step | Input | Result |
